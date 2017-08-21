@@ -45,6 +45,7 @@ typedef struct entry_s {
 
 typedef struct hashtable_s {
 	long size;
+	long count;
 	entry_t **table;
 } hashtable_t;
 
@@ -73,6 +74,7 @@ static hashtable_t *ht_create(long size)
 	}
 
 	hashtable->size = size;
+	hashtable->count = 0;
 	return hashtable;
 }
 
@@ -134,6 +136,7 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
 			newpair->next = next;
 			last->next = newpair;
 		}
+		hashtable->count++;
 	}
 }
 
@@ -157,7 +160,7 @@ static zval *ht_get(hashtable_t *hashtable, char *key)
 static void ht_destroy(hashtable_t *hashtable)
 {
 	entry_t *curr, *next;
-	if (hashtable->size > 0) {
+	if (hashtable->count > 0) {
 		for (long i = 0; i < hashtable->size; i++) {
 			curr = hashtable->table[i];
 			while (curr != NULL) {
@@ -165,9 +168,9 @@ static void ht_destroy(hashtable_t *hashtable)
 				efree(curr->key);
 				zval_ptr_dtor(&curr->value);
 				efree(curr);
+				hashtable->count--;
 				curr = next;
 			}
-			hashtable->size--;
 		}
 	}
 	efree(hashtable);
@@ -237,6 +240,18 @@ PHP_METHOD(linger_hashtable, get)
 	RETURN_ZVAL(retval, 1, 0);
 }
 
+PHP_METHOD(linger_hashtable, getCount)
+{
+	zval *hrc;
+	hashtable_t *hashtable;
+	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
+	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
+	if (!hashtable) {
+		RETURN_FALSE;
+	}
+	RETURN_LONG(hashtable->count);
+}
+
 PHP_METHOD(linger_hashtable, getSize)
 {
 	zval *hrc;
@@ -260,6 +275,7 @@ static zend_function_entry hashtable_method[] = {
 	PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, getSize, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, getCount, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
