@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("linger_hashtable", "for linger_hashtable support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("linger_hashtable", "enable linger_hashtable support", "no");
+
+if (PHP_LINGER_HASHTABLE != "no") {
+	EXTENSION("linger_hashtable", "linger_hashtable.c");
+}
+
