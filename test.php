@@ -18,3 +18,5 @@ for($i = 0; $i < $n; $i++) {
 }
 
 echo microtime(true) - $start,PHP_EOL;
+
+var_dump($ht->getSize());

@@ -237,6 +237,18 @@ PHP_METHOD(linger_hashtable, get)
 	RETURN_ZVAL(retval, 1, 0);
 }
 
+PHP_METHOD(linger_hashtable, getSize)
+{
+	zval *hrc;
+	hashtable_t *hashtable;
+	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
+	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
+	if (!hashtable) {
+		RETURN_FALSE;
+	}
+	RETURN_LONG(hashtable->size);
+}
+
 PHP_METHOD(linger_hashtable, __destruct)
 {
 
@@ -247,6 +259,7 @@ static zend_function_entry hashtable_method[] = {
 	PHP_ME(linger_hashtable, __destruct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
 	PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, getSize, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
