@@ -34,12 +34,3 @@ for ($i = 0; $i < $n; $i++) {
 
 echo microtime(true) - $start,PHP_EOL;
 
-for ($i = 0; $i < $n; $i++) {
-    $res = $ht->del("hello".$i);
-    if (!$res) {
-        echo "fail:"."hello".$i,PHP_EOL;
-    }
-}
-
-var_dump($ht->getCount());
-

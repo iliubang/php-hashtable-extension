@@ -78,7 +78,7 @@ static hashtable_t *ht_create(long size)
 	return hashtable;
 }
 
-static long ht_hash(hashtable_t *hashtable, char *key)
+static inline long ht_hash(hashtable_t *hashtable, char *key)
 {
 	unsigned long hashval = 0;
 	int i = 0;
