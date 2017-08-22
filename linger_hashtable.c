@@ -357,6 +357,51 @@ PHP_METHOD(linger_hashtable, getSize)
 	RETURN_LONG(hashtable->size);
 }
 
+PHP_METHOD(linger_hashtable, foreach)
+{
+	zval *func;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &func) == FAILURE) {
+		RETURN_FALSE;
+	}
+	char *func_name;
+	if (!zend_is_callable(func, 0, &func_name TSRMLS_CC)) {
+		php_error_dcref(NULL TSRMLS_CC, E_ERROR, "Fuction %s is not callable", func_name);
+		RETURN_FALSE;
+	}
+	zval *hrc;
+	hashtable_t *hashtable;
+	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
+	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
+	if (!hashtable) {
+		RETURN_FALSE;
+	}
+	if (hashtable->count <= 0) {
+		RETURN_TRUE;
+	} else {
+		zval **arg[2];
+		zval *param1, *param2, *retval;
+		MAKE_STD_ZVAL(param1);
+		MAKE_STD_ZVAL(param2);
+		entry_t *curr;
+		for (long i = 0; i < hashtable->size; i++) {
+			curr = hashtable->table[i];
+			while (curr != NULL && curr->key != NULL) {
+				ZVAL_STRING(param1, curr->key, 1);	
+				ZVAL_ZVAL(param2, curr->value, 1, 0);
+				arg[0] = &param1;
+				arg[1] = &param2;
+				if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
+					php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
+				}
+				curr = curr->next;
+			}
+		}
+		zval_ptr_dtor(param1);
+		zval_ptr_dtor(param2);
+		RETURN_TRUE;
+	}
+}
+
 PHP_METHOD(linger_hashtable, __destruct)
 {
 
@@ -369,6 +414,7 @@ static zend_function_entry hashtable_method[] = {
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, foreach, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, getSize, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, getCount, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END

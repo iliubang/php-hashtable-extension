@@ -36,3 +36,7 @@ echo microtime(true) - $start,PHP_EOL;
 
 var_dump($ht->isset("hello"));
 var_dump($ht->get("hello"));
+
+$ht->foreach(function($key, $val) {
+    echo "key:" . $key . " === val:".$val."\n";
+});
