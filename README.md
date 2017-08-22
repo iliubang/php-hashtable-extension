@@ -10,7 +10,7 @@ phpize
 ./configure
 make && sudo make install
 
-echo 'extension = linger-hashtable.so' >> {your php ini path}/php-cli.ini
+echo 'extension = linger_hashtable.so' >> {your php ini path}/php-cli.ini
 ```
 
 ```php
