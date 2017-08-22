@@ -15,9 +15,6 @@ for($i = 0; $i < $n; $i++) {
 
 for($i = 0; $i < $n; $i++) {
 	$tmp = $ht->get("hello".$i);
-    if ($i == 8800) {
-        var_dump($tmp);
-    }
 }
 
 echo microtime(true) - $start,PHP_EOL;
@@ -40,9 +37,9 @@ echo microtime(true) - $start,PHP_EOL;
 for ($i = 0; $i < $n; $i++) {
     $res = $ht->del("hello".$i);
     if (!$res) {
-        echo "hello".$i,PHP_EOL;
+        echo "fail:"."hello".$i,PHP_EOL;
     }
 }
 
-$ht->del("hello");
 var_dump($ht->getCount());
+

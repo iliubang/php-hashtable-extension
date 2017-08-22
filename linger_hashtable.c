@@ -78,7 +78,7 @@ static hashtable_t *ht_create(long size)
 	return hashtable;
 }
 
-static int ht_hash(hashtable_t *hashtable, char *key)
+static long ht_hash(hashtable_t *hashtable, char *key)
 {
 	unsigned long hashval = 0;
 	int i = 0;
@@ -159,24 +159,27 @@ static zval *ht_get(hashtable_t *hashtable, char *key)
 
 static int ht_del(hashtable_t *hashtable, char *key)
 {
-	int bin = 0;
+	if (hashtable->count <= 0) {
+		return -1;
+	}
+	long bin = 0;
+	entry_t *pair, *pre;
 	bin = ht_hash(hashtable, key);
-	entry_t *pair, *curr;
 	pair = hashtable->table[bin];
-	curr = pair;
+	pre = pair;
 	while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
-		curr = pair;
-		pair = pair->next;	
+		pre = pair;
+		pair = pair->next;
 	}
 
 	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
 		return -1;
 	} else {
 		/* the head */
-		if (curr == pair) {
-			hashtable->table[bin] = NULL;
+		if (pre == pair) {
+			hashtable->table[bin] = pair->next;
 		} else {
-			curr->next = pair->next;	
+			pre->next = pair->next;	
 		}
 		linger_efree(pair->key);
 		zval_ptr_dtor(&pair->value);
@@ -189,13 +192,11 @@ static int ht_del(hashtable_t *hashtable, char *key)
 static void ht_destroy(hashtable_t *hashtable)
 {
 	entry_t *curr, *next;
-	php_printf("ht_destroy\n");
 	if (hashtable->count > 0) {
 		for (long i = 0; i < hashtable->size; i++) {
 			curr = hashtable->table[i];
 			while (curr != NULL) {
 				next = curr->next;
-				php_printf(curr->key);
 				linger_efree(curr->key);
 				zval_ptr_dtor(&curr->value);
 				linger_efree(curr);

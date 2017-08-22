@@ -9,3 +9,7 @@ var_dump($ht->getCount());
 $ht->del("hello");
 var_dump($ht->getCount());
 
+$ht->set("hello8800", "world");
+echo $ht->get("hello8800")."\n";
+var_dump($ht->del("hello8800"));
+
