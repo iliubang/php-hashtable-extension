@@ -269,7 +269,11 @@ PHP_METHOD(linger_hashtable, get)
 	}
 	zval *retval;
 	retval = ht_get(hashtable, key);
-	RETURN_ZVAL(retval, 1, 0);
+	if (retval == NULL) {
+		RETURN_NULL();
+	} else {
+		RETURN_ZVAL(retval, 1, 0);
+	}
 }
 
 PHP_METHOD(linger_hashtable, del)

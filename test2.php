@@ -13,3 +13,5 @@ $ht->set("hello8800", "world");
 echo $ht->get("hello8800")."\n";
 var_dump($ht->del("hello8800"));
 
+var_dump($ht->get("liubang"));
+
