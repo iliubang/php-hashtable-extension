@@ -172,7 +172,12 @@ static int ht_del(hashtable_t *hashtable, char *key)
 	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
 		return -1;
 	} else {
-		curr->next = pair->next;	
+		/* the head */
+		if (curr == pair) {
+			hashtable->table[bin] = NULL;
+		} else {
+			curr->next = pair->next;	
+		}
 		linger_efree(pair->key);
 		zval_ptr_dtor(&pair->value);
 		linger_efree(pair);
@@ -184,11 +189,13 @@ static int ht_del(hashtable_t *hashtable, char *key)
 static void ht_destroy(hashtable_t *hashtable)
 {
 	entry_t *curr, *next;
+	php_printf("ht_destroy\n");
 	if (hashtable->count > 0) {
 		for (long i = 0; i < hashtable->size; i++) {
 			curr = hashtable->table[i];
 			while (curr != NULL) {
 				next = curr->next;
+				php_printf(curr->key);
 				linger_efree(curr->key);
 				zval_ptr_dtor(&curr->value);
 				linger_efree(curr);
