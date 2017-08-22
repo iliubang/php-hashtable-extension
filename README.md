@@ -58,4 +58,12 @@ for ($i = 0; $i < $n; $i++) {
 }
 
 var_dump($ht->getCount());
+
+$ht->foreach(function($key, $val) {
+    echo "key:" . $key . " === val:".$val."\n";
+});
+
+var_dump($ht->del("hello12"));
+var_dump($ht->isset("hello13"));
+
 ```
