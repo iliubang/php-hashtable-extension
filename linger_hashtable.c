@@ -157,6 +157,21 @@ static zval *ht_get(hashtable_t *hashtable, char *key)
 	return pair->value;
 }
 
+static int ht_isset(hashtable_t *hashtable, char *key)
+{
+	int bin = 0;
+	entry_t *pair;
+	bin = ht_hash(hashtable, key);
+	pair = hashtable->table[bin];
+	while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
+		pair = pair->next;
+	}
+	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
 static int ht_del(hashtable_t *hashtable, char *key)
 {
 	if (hashtable->count <= 0) {
@@ -276,6 +291,27 @@ PHP_METHOD(linger_hashtable, get)
 	}
 }
 
+PHP_METHOD(linger_hashtable, isset)
+{
+	char *key;
+	long key_len;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+	zval *hrc;
+	hashtable_t *hashtable;
+	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
+	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
+	if (!hashtable) {
+		RETURN_FALSE;
+	}
+	if (ht_isset(hashtable, key) == 0) {
+		RETURN_TRUE;
+	} else {
+		RETURN_FALSE;
+	}
+}
+
 PHP_METHOD(linger_hashtable, del)
 {
 	char *key;
@@ -332,6 +368,7 @@ static zend_function_entry hashtable_method[] = {
 	PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, getSize, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, getCount, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
