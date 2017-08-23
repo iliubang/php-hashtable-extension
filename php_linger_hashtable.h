@@ -38,6 +38,8 @@ extern zend_module_entry linger_hashtable_module_entry;
 #include "TSRM.h"
 #endif
 
+#define LINGER_HASHTABLE_VERSION	"1.0"
+
 /* 
   	Declare any global variables you may need between the BEGIN
 	and END macros here:     

@@ -468,7 +468,9 @@ PHP_RSHUTDOWN_FUNCTION(linger_hashtable)
 PHP_MINFO_FUNCTION(linger_hashtable)
 {
 	php_info_print_table_start();
-	php_info_print_table_header(2, "linger_hashtable support", "enabled");
+	php_info_print_table_row(2, "linger_hashtable support", "enabled");
+	php_info_print_table_row(2, "version", LINGER_HASHTABLE_VERSION);
+	php_info_print_table_row(2, "author", "liubang <it.liubang@gmail.com>");
 	php_info_print_table_end();
 
 }
