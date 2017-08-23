@@ -65,5 +65,60 @@ $ht->foreach(function($key, $val) {
 
 var_dump($ht->del("hello12"));
 var_dump($ht->isset("hello13"));
+```
 
+Support Methods
+
+```php
+namespace linger;
+
+class Hashtable {
+    /**
+     *@param int $size
+     */
+    public function __construct($size);
+    
+    /**
+     *@param string $key
+     *@param mixed $value
+     *@return bool
+     */
+    public function set($key, $value);
+
+    /**
+     *@param string $key
+     *@return mixed
+     */
+    public function get($key);
+
+    /**
+     *@param string $key
+     *@return bool
+     */
+    public function isset($key);
+
+    /**
+     *@param string $key
+     *@return bool
+     */
+    public function del($key);
+
+    /**
+     *@return int
+     */
+    public function getCount();
+
+    /**
+     *@return int
+     */
+    public function getSize();
+
+    /**
+     *@param callable $callback
+     *@return bool
+     */
+    public function foreach($callback);
+
+    public function __destruct();
+}
 ```
