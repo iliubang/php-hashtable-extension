@@ -78,6 +78,25 @@ static hashtable_t *ht_create(long size)
 	return hashtable;
 }
 
+static inline unsigned int ht_hash(hashtable_t *hashtable, char *key)
+{
+	const char *ptr;
+	unsigned int val;
+	val = 0;
+	ptr = key;
+	while (*ptr != '\0') {
+		unsigned int tmp;
+		val = (val << 4) + (*ptr);
+		if (tmp = (val & 0xf0000000)) {
+			val = val ^ (tmp >> 24);
+			val = val ^ tmp;
+		}
+		ptr++;
+	}
+	return val % hashtable->size;
+}
+
+/*
 static inline long ht_hash(hashtable_t *hashtable, char *key)
 {
 	unsigned long hashval = 0;
@@ -89,6 +108,7 @@ static inline long ht_hash(hashtable_t *hashtable, char *key)
 	}
 	return hashval % hashtable->size;
 }
+*/
 
 static entry_t *ht_newpair(char *key, zval *value)
 {
