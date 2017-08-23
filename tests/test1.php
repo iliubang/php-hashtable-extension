@@ -37,3 +37,11 @@ var_dump($ht->get("obj"));
 $obj = $ht->get("obj");
 var_dump($obj->getName());
 var_dump($obj->getAge());
+
+$ht->del("obj");
+var_dump($ht->isset("obj"));
+
+$ht->foreach(function($key, $val) {
+    echo "=====key:" . $key . "======\n";
+    var_dump($val);
+});

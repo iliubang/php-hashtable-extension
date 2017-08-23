@@ -396,8 +396,8 @@ PHP_METHOD(linger_hashtable, foreach)
 				curr = curr->next;
 			}
 		}
-		zval_ptr_dtor(param1);
-		zval_ptr_dtor(param2);
+		zval_ptr_dtor(&param1);
+		zval_ptr_dtor(&param2);
 		RETURN_TRUE;
 	}
 }
