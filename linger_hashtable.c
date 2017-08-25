@@ -30,12 +30,8 @@
 static int le_linger_hashtable;
 
 zend_class_entry *hashtable_ce;
-static int le_hashtable_descriptor;
-static int freed = 0;
-#define PHP_HASHTABLE_DESCRIPTOR_NAME "linger hashtable descriptor"
-#define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
 
-#define linger_efree(ptr) if(ptr) efree(ptr)
+static zend_object_handlers hashtable_object_handlers;
 
 typedef struct entry_s {
 	char *key;
@@ -49,6 +45,11 @@ typedef struct hashtable_s {
 	entry_t **table;
 } hashtable_t;
 
+/* Define hashtable object struct */
+typedef struct _hashtable_object {
+	zend_object std;
+	hashtable_t *hashtable;
+} hashtable_object;
 
 /* Create hashtable */
 static hashtable_t *ht_create(long size)
@@ -95,20 +96,6 @@ static inline unsigned int ht_hash(hashtable_t *hashtable, char *key)
 	}
 	return val % hashtable->size;
 }
-
-/*
-static inline long ht_hash(hashtable_t *hashtable, char *key)
-{
-	unsigned long hashval = 0;
-	int i = 0;
-	while (hashval < ULONG_MAX && i < strlen(key)) {
-		hashval = hashval << 8;
-		hashval += key[i];
-		i++;
-	}
-	return hashval % hashtable->size;
-}
-*/
 
 static entry_t *ht_newpair(char *key, zval *value)
 {
@@ -243,48 +230,43 @@ static void ht_destroy(hashtable_t *hashtable)
 	linger_efree(hashtable);
 }
 
-static void php_hashtable_descriptor_dotr(zend_rsrc_list_entry *rsrc TSRMLS_CC)
+static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
 {
-	if (!freed) {
-		hashtable_t *hashtable = (hashtable_t *)rsrc->ptr;
-		ht_destroy(hashtable);
-		freed = 1;
-	}
+	zend_object_std_dtor(&ht_object->std TSRMLS_CC);	
+	ht_destroy(ht_object->hashtable);
+	efree(ht_object);
 }
 
-
-PHP_METHOD(linger_hashtable, __construct)
+zend_object_value hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
 {
-	hashtable_t *hashtable;
-	long size;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &size) == FAILURE) {
-		RETURN_FALSE;
-	}
-	hashtable = ht_create(size);
-	if (hashtable == NULL) {
-		RETURN_FALSE;
-	}
-	zval *hashtable_res;
-	MAKE_STD_ZVAL(hashtable_res);
-	ZEND_REGISTER_RESOURCE(hashtable_res, hashtable, le_hashtable_descriptor);
-	zend_update_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), hashtable_res TSRMLS_CC);
+	zend_object_value retval;
+	hashtable_object *ht_object = emalloc(sizeof(hashtable_object));
+	memset(ht_object, 0, sizeof(hashtable_object));
+	ht_object->hashtable = ht_create(655350);
+	zend_object_std_init(&ht_object->std, class_type TSRMLS_CC);
+	retval.handle = zend_objects_store_put(
+			ht_object,
+			(zend_objects_store_dtor_t) zend_objects_destroy_object,
+			(zend_objects_free_object_storage_t) hashtable_free_object_storage_handler,
+			NULL
+			TSRMLS_CC
+			);	
+	retval.handlers = &hashtable_object_handlers;
+	return retval;
 }
+
 
 PHP_METHOD(linger_hashtable, set)
 {
 	char *key;
 	long key_len;
 	zval *value, *hrc;
-	hashtable_t *hashtable;
+	hashtable_object *ht_obj;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &value) == FAILURE) {
 		RETURN_FALSE;
 	}
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);	
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
-	ht_set(hashtable, key, value);
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+	ht_set(ht_obj->hashtable, key, value);
 	RETURN_TRUE;	
 }
 
@@ -295,15 +277,10 @@ PHP_METHOD(linger_hashtable, get)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
 		RETURN_FALSE;
 	}
-	zval *hrc;
-	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
+	hashtable_object *ht_obj;
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
 	zval *retval;
-	retval = ht_get(hashtable, key);
+	retval = ht_get(ht_obj->hashtable, key);
 	if (retval == NULL) {
 		RETURN_NULL();
 	} else {
@@ -318,14 +295,9 @@ PHP_METHOD(linger_hashtable, isset)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
 		RETURN_FALSE;
 	}
-	zval *hrc;
-	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
-	if (ht_isset(hashtable, key) == 0) {
+	hashtable_object *ht_obj;
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (ht_isset(ht_obj->hashtable, key) == 0) {
 		RETURN_TRUE;
 	} else {
 		RETURN_FALSE;
@@ -339,42 +311,20 @@ PHP_METHOD(linger_hashtable, del)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
 		RETURN_FALSE;
 	}
-	zval *hrc;
-	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
-	if (ht_del(hashtable, key) == 0) {
+	hashtable_object *ht_obj;
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (ht_del(ht_obj->hashtable, key) == 0) {
 		RETURN_TRUE;
 	} else {
 		RETURN_FALSE;
 	}
 }
 
-PHP_METHOD(linger_hashtable, getCount)
+PHP_METHOD(linger_hashtable, count)
 {
-	zval *hrc;
-	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
-	RETURN_LONG(hashtable->count);
-}
-
-PHP_METHOD(linger_hashtable, getSize)
-{
-	zval *hrc;
-	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
-	RETURN_LONG(hashtable->size);
+	hashtable_object *ht_obj;	
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+	RETURN_LONG(ht_obj->hashtable->count);
 }
 
 PHP_METHOD(linger_hashtable, foreach)
@@ -388,13 +338,10 @@ PHP_METHOD(linger_hashtable, foreach)
 		php_error_dcref(NULL TSRMLS_CC, E_ERROR, "Fuction %s is not callable", func_name);
 		RETURN_FALSE;
 	}
-	zval *hrc;
+	hashtable_object *ht_obj;
 	hashtable_t *hashtable;
-	hrc = zend_read_property(hashtable_ce, getThis(), ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), 0 TSRMLS_CC);
-	ZEND_FETCH_RESOURCE(hashtable, hashtable_t *, &hrc, -1, PHP_HASHTABLE_DESCRIPTOR_NAME, le_hashtable_descriptor);
-	if (!hashtable) {
-		RETURN_FALSE;
-	}
+	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+	hashtable = ht_obj->hashtable;
 	if (hashtable->count <= 0) {
 		RETURN_TRUE;
 	} else {
@@ -422,6 +369,11 @@ PHP_METHOD(linger_hashtable, foreach)
 	}
 }
 
+PHP_METHOD(linger_hashtable, __construct)
+{
+
+}
+
 PHP_METHOD(linger_hashtable, __destruct)
 {
 
@@ -434,9 +386,8 @@ static zend_function_entry hashtable_method[] = {
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, foreach, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, getSize, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, getCount, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -448,13 +399,8 @@ PHP_MINIT_FUNCTION(linger_hashtable)
 	zend_class_entry ce;
 	INIT_CLASS_ENTRY(ce, "Linger\\Hashtable", hashtable_method);
 	hashtable_ce = zend_register_internal_class(&ce TSRMLS_CC);
-	zend_declare_property_null(hashtable_ce, ZEND_STRL(LINGER_HASHTABLE_PROPERTIES_NAME), ZEND_ACC_PRIVATE TSRMLS_CC);
-	le_hashtable_descriptor = zend_register_list_destructors_ex(
-			php_hashtable_descriptor_dotr,
-			NULL,
-			PHP_HASHTABLE_DESCRIPTOR_NAME,
-			module_number
-			);
+	hashtable_ce->create_object = hashtable_create_object_handler;
+	memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	return SUCCESS;
 }
 /* }}} */

@@ -39,6 +39,11 @@ extern zend_module_entry linger_hashtable_module_entry;
 #endif
 
 #define LINGER_HASHTABLE_VERSION	"1.0"
+#define PHP_HASHTABLE_DESCRIPTOR_NAME "linger hashtable descriptor"                                                                                                        
+#define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
+
+
+#define linger_efree(ptr) if(ptr) efree(ptr)
 
 /* 
   	Declare any global variables you may need between the BEGIN
