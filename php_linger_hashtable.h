@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 5                                                        |
+  | linger_hashtable                                                     |
   +----------------------------------------------------------------------+
   | Copyright (c) 1997-2016 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -12,7 +12,7 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author:                                                              |
+  | Author: liubang <it.liubang@gmail.com>                               |
   +----------------------------------------------------------------------+
 */
 
@@ -24,7 +24,7 @@
 extern zend_module_entry linger_hashtable_module_entry;
 #define phpext_linger_hashtable_ptr &linger_hashtable_module_entry
 
-#define PHP_LINGER_HASHTABLE_VERSION "0.1.0" /* Replace with version number for your extension */
+#define PHP_LINGER_HASHTABLE_VERSION "1.0" 
 
 #ifdef PHP_WIN32
 #	define PHP_LINGER_HASHTABLE_API __declspec(dllexport)
@@ -38,8 +38,6 @@ extern zend_module_entry linger_hashtable_module_entry;
 #include "TSRM.h"
 #endif
 
-#define LINGER_HASHTABLE_VERSION	"1.0"
-#define PHP_HASHTABLE_DESCRIPTOR_NAME "linger hashtable descriptor"                                                                                                        
 #define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
 
 
