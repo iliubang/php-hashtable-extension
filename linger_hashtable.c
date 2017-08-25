@@ -320,7 +320,7 @@ PHP_METHOD(linger_hashtable, del)
 	}
 }
 
-PHP_METHOD(linger_hashtable, getCount)
+PHP_METHOD(linger_hashtable, count)
 {
 	hashtable_object *ht_obj;	
 	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
@@ -369,19 +369,25 @@ PHP_METHOD(linger_hashtable, foreach)
 	}
 }
 
+PHP_METHOD(linger_hashtable, __construct)
+{
+
+}
+
 PHP_METHOD(linger_hashtable, __destruct)
 {
 
 }
 
 static zend_function_entry hashtable_method[] = {
+	PHP_ME(linger_hashtable, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
 	PHP_ME(linger_hashtable, __destruct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
 	PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(linger_hashtable, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(linger_hashtable, foreach, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, getCount, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

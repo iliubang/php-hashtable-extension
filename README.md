@@ -16,7 +16,7 @@ echo 'extension = linger_hashtable.so' >> {your php ini path}/php-cli.ini
 ```php
 <?php
 
-$ht = new Linger\Hashtable(6553500);
+$ht = new Linger\Hashtable();
 var_dump($ht);
 $ht->set("hello", "world");
 var_dump($ht->get("hello"));
@@ -35,8 +35,7 @@ for($i = 0; $i < $n; $i++) {
 
 echo microtime(true) - $start,PHP_EOL;
 
-var_dump($ht->getSize());
-var_dump($ht->getCount());
+var_dump($ht->count());
 
 $start = microtime(true);
 
@@ -106,12 +105,7 @@ class Hashtable {
     /**
      *@return int
      */
-    public function getCount();
-
-    /**
-     *@return int
-     */
-    public function getSize();
+    public function count();
 
     /**
      *@param callable $callback

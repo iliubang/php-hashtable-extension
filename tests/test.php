@@ -13,7 +13,7 @@ for ($i = 0; $i < $n; $i++) {
     
     $ht->set("hello{$i}", "world{$i}");
 }
-var_dump($ht->getCount());
+var_dump($ht->count());
 
 for ($i = 0; $i < $n; $i++) {
     var_dump($ht->get("hello{$i}"));
