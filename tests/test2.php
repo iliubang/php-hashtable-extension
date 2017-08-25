@@ -1,6 +1,6 @@
 <?php
 
-$ht = new linger\Hashtable(65535);
+$ht = new linger\Hashtable();
 
 $n = 10000;
 

@@ -1,6 +1,6 @@
 <?php
 
-$ht = new linger\Hashtable(655350);
+$ht = new linger\Hashtable();
 
 $ht->set("func", function() {
     echo "hello world\n";
