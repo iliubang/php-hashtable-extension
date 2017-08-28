@@ -1,4 +1,4 @@
-# a simple hashtable implement
+# a simple hashtable implementation
 
 ## Require
 - php <= 5.6

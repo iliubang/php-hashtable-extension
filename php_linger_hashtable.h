@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 5                                                        |
+  | linger_hashtable                                                     |
   +----------------------------------------------------------------------+
   | Copyright (c) 1997-2016 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -12,7 +12,7 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author:                                                              |
+  | Author: liubang <it.liubang@gmail.com>                               |
   +----------------------------------------------------------------------+
 */
 
@@ -24,7 +24,7 @@
 extern zend_module_entry linger_hashtable_module_entry;
 #define phpext_linger_hashtable_ptr &linger_hashtable_module_entry
 
-#define PHP_LINGER_HASHTABLE_VERSION "0.1.0" /* Replace with version number for your extension */
+#define PHP_LINGER_HASHTABLE_VERSION "1.0"
 
 #ifdef PHP_WIN32
 #	define PHP_LINGER_HASHTABLE_API __declspec(dllexport)
@@ -38,16 +38,14 @@ extern zend_module_entry linger_hashtable_module_entry;
 #include "TSRM.h"
 #endif
 
-#define LINGER_HASHTABLE_VERSION	"1.0"
-#define PHP_HASHTABLE_DESCRIPTOR_NAME "linger hashtable descriptor"                                                                                                        
 #define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
 
 
 #define linger_efree(ptr) if(ptr) efree(ptr)
 
-/* 
+/*
   	Declare any global variables you may need between the BEGIN
-	and END macros here:     
+	and END macros here:
 
 ZEND_BEGIN_MODULE_GLOBALS(linger_hashtable)
 	long  global_value;
@@ -55,12 +53,12 @@ ZEND_BEGIN_MODULE_GLOBALS(linger_hashtable)
 ZEND_END_MODULE_GLOBALS(linger_hashtable)
 */
 
-/* In every utility function you add that needs to use variables 
-   in php_linger_hashtable_globals, call TSRMLS_FETCH(); after declaring other 
+/* In every utility function you add that needs to use variables
+   in php_linger_hashtable_globals, call TSRMLS_FETCH(); after declaring other
    variables used by that function, or better yet, pass in TSRMLS_CC
    after the last function argument and declare your utility function
    with TSRMLS_DC after the last declared argument.  Always refer to
-   the globals in your function as LINGER_HASHTABLE_G(variable).  You are 
+   the globals in your function as LINGER_HASHTABLE_G(variable).  You are
    encouraged to rename these macros something shorter, see
    examples in any other php module directory.
 */

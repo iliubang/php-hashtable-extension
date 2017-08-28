@@ -34,339 +34,339 @@ zend_class_entry *hashtable_ce;
 static zend_object_handlers hashtable_object_handlers;
 
 typedef struct entry_s {
-	char *key;
-	zval *value;
-	struct entry_s *next;
+    char *key;
+    zval *value;
+    struct entry_s *next;
 } entry_t;
 
 typedef struct hashtable_s {
-	long size;
-	long count;
-	entry_t **table;
+    long size;
+    long count;
+    entry_t **table;
 } hashtable_t;
 
 /* Define hashtable object struct */
 typedef struct _hashtable_object {
-	zend_object std;
-	hashtable_t *hashtable;
+    zend_object std;
+    hashtable_t *hashtable;
 } hashtable_object;
 
 /* Create hashtable */
 static hashtable_t *ht_create(long size)
 {
-	hashtable_t *hashtable = NULL;
-	long i;
+    hashtable_t *hashtable = NULL;
+    long i;
 
-	if (size < 1) {
-		return NULL;
-	}
+    if (size < 1) {
+        return NULL;
+    }
 
-	if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
-		return NULL;
-	}
+    if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
+        return NULL;
+    }
 
-	if ((hashtable->table = emalloc(sizeof(entry_t *) * size)) == NULL) {
-		linger_efree(hashtable);
-		return NULL;
-	}
+    if ((hashtable->table = emalloc(sizeof(entry_t *) * size)) == NULL) {
+        linger_efree(hashtable);
+        return NULL;
+    }
 
-	for (i = 0; i < size; i++) {
-		hashtable->table[i] = NULL;	
-	}
+    for (i = 0; i < size; i++) {
+        hashtable->table[i] = NULL;
+    }
 
-	hashtable->size = size;
-	hashtable->count = 0;
-	return hashtable;
+    hashtable->size = size;
+    hashtable->count = 0;
+    return hashtable;
 }
 
 static inline unsigned int ht_hash(hashtable_t *hashtable, char *key)
 {
-	const char *ptr;
-	unsigned int val;
-	val = 0;
-	ptr = key;
-	while (*ptr != '\0') {
-		unsigned int tmp;
-		val = (val << 4) + (*ptr);
-		if (tmp = (val & 0xf0000000)) {
-			val = val ^ (tmp >> 24);
-			val = val ^ tmp;
-		}
-		ptr++;
-	}
-	return val % hashtable->size;
+    const char *ptr;
+    unsigned int val;
+    val = 0;
+    ptr = key;
+    while (*ptr != '\0') {
+        unsigned int tmp;
+        val = (val << 4) + (*ptr);
+        if (tmp = (val & 0xf0000000)) {
+            val = val ^ (tmp >> 24);
+            val = val ^ tmp;
+        }
+        ptr++;
+    }
+    return val % hashtable->size;
 }
 
 static entry_t *ht_newpair(char *key, zval *value)
 {
-	entry_t *newpair;
-	if ((newpair = emalloc(sizeof(entry_t))) == NULL) {
-		return NULL;
-	}
+    entry_t *newpair;
+    if ((newpair = emalloc(sizeof(entry_t))) == NULL) {
+        return NULL;
+    }
 
-	if ((newpair->key = estrdup(key)) == NULL) {
-		linger_efree(newpair);
-		return NULL;	
-	}
+    if ((newpair->key = estrdup(key)) == NULL) {
+        linger_efree(newpair);
+        return NULL;
+    }
 
-	MAKE_STD_ZVAL(newpair->value);
-	ZVAL_ZVAL(newpair->value, value, 1, 0);
-	newpair->next = NULL;
-	return newpair;
+    MAKE_STD_ZVAL(newpair->value);
+    ZVAL_ZVAL(newpair->value, value, 1, 0);
+    newpair->next = NULL;
+    return newpair;
 }
 
 static void ht_set(hashtable_t *hashtable, char *key, zval *value)
 {
-	int bin = 0;
-	entry_t *newpair = NULL;
-	entry_t *next = NULL;
-	entry_t *last = NULL;
+    int bin = 0;
+    entry_t *newpair = NULL;
+    entry_t *next = NULL;
+    entry_t *last = NULL;
 
-	bin = ht_hash(hashtable, key);
-	next = hashtable->table[bin];
-	while (next != NULL && next->key != NULL && strcmp(key, next->key)) {
-		last = next;
-		next = next->next;
-	}
+    bin = ht_hash(hashtable, key);
+    next = hashtable->table[bin];
+    while (next != NULL && next->key != NULL && strcmp(key, next->key)) {
+        last = next;
+        next = next->next;
+    }
 
-	if (next != NULL && next->key != NULL && strcmp(key, next->key) == 0) {
-		linger_efree(next->value);
-		next->value = estrdup(value);
-	} else {
-		newpair = ht_newpair(key, value);
-		if (next == hashtable->table[bin]) {
-			newpair->next = NULL;
-			hashtable->table[bin] = newpair;
-		} else if (next == NULL) {
-			last->next = newpair;
-		} else {
-			newpair->next = next;
-			last->next = newpair;
-		}
-		hashtable->count++;
-	}
+    if (next != NULL && next->key != NULL && strcmp(key, next->key) == 0) {
+        linger_efree(next->value);
+        next->value = estrdup(value);
+    } else {
+        newpair = ht_newpair(key, value);
+        if (next == hashtable->table[bin]) {
+            newpair->next = NULL;
+            hashtable->table[bin] = newpair;
+        } else if (next == NULL) {
+            last->next = newpair;
+        } else {
+            newpair->next = next;
+            last->next = newpair;
+        }
+        hashtable->count++;
+    }
 }
 
 static zval *ht_get(hashtable_t *hashtable, char *key)
 {
-	int bin = 0;
-	entry_t *pair;
-	bin = ht_hash(hashtable, key);
-	pair = hashtable->table[bin];
-	while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
-		pair = pair->next;
-	}
+    int bin = 0;
+    entry_t *pair;
+    bin = ht_hash(hashtable, key);
+    pair = hashtable->table[bin];
+    while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
+        pair = pair->next;
+    }
 
-	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
-		return NULL;
-	}
+    if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
+        return NULL;
+    }
 
-	return pair->value;
+    return pair->value;
 }
 
 static int ht_isset(hashtable_t *hashtable, char *key)
 {
-	int bin = 0;
-	entry_t *pair;
-	bin = ht_hash(hashtable, key);
-	pair = hashtable->table[bin];
-	while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
-		pair = pair->next;
-	}
-	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
-		return -1;
-	}
-	return 0;
+    int bin = 0;
+    entry_t *pair;
+    bin = ht_hash(hashtable, key);
+    pair = hashtable->table[bin];
+    while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
+        pair = pair->next;
+    }
+    if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
+        return -1;
+    }
+    return 0;
 }
 
 static int ht_del(hashtable_t *hashtable, char *key)
 {
-	if (hashtable->count <= 0) {
-		return -1;
-	}
-	long bin = 0;
-	entry_t *pair, *pre;
-	bin = ht_hash(hashtable, key);
-	pair = hashtable->table[bin];
-	pre = pair;
-	while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
-		pre = pair;
-		pair = pair->next;
-	}
+    if (hashtable->count <= 0) {
+        return -1;
+    }
+    long bin = 0;
+    entry_t *pair, *pre;
+    bin = ht_hash(hashtable, key);
+    pair = hashtable->table[bin];
+    pre = pair;
+    while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
+        pre = pair;
+        pair = pair->next;
+    }
 
-	if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
-		return -1;
-	} else {
-		/* the head */
-		if (pre == pair) {
-			hashtable->table[bin] = pair->next;
-		} else {
-			pre->next = pair->next;	
-		}
-		linger_efree(pair->key);
-		zval_ptr_dtor(&pair->value);
-		linger_efree(pair);
-		hashtable->count--;
-		return 0;
-	}
+    if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
+        return -1;
+    } else {
+        /* the head */
+        if (pre == pair) {
+            hashtable->table[bin] = pair->next;
+        } else {
+            pre->next = pair->next;
+        }
+        linger_efree(pair->key);
+        zval_ptr_dtor(&pair->value);
+        linger_efree(pair);
+        hashtable->count--;
+        return 0;
+    }
 }
 
 static void ht_destroy(hashtable_t *hashtable)
 {
-	entry_t *curr, *next;
-	if (hashtable->count > 0) {
-		for (long i = 0; i < hashtable->size; i++) {
-			curr = hashtable->table[i];
-			while (curr != NULL) {
-				next = curr->next;
-				linger_efree(curr->key);
-				zval_ptr_dtor(&curr->value);
-				linger_efree(curr);
-				hashtable->count--;
-				curr = next;
-			}
-		}
-	}
-	linger_efree(hashtable);
+    entry_t *curr, *next;
+    if (hashtable->count > 0) {
+        for (long i = 0; i < hashtable->size; i++) {
+            curr = hashtable->table[i];
+            while (curr != NULL) {
+                next = curr->next;
+                linger_efree(curr->key);
+                zval_ptr_dtor(&curr->value);
+                linger_efree(curr);
+                hashtable->count--;
+                curr = next;
+            }
+        }
+    }
+    linger_efree(hashtable);
 }
 
 static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
 {
-	zend_object_std_dtor(&ht_object->std TSRMLS_CC);	
-	ht_destroy(ht_object->hashtable);
-	efree(ht_object);
+    zend_object_std_dtor(&ht_object->std TSRMLS_CC);
+    ht_destroy(ht_object->hashtable);
+    efree(ht_object);
 }
 
 zend_object_value hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
 {
-	zend_object_value retval;
-	hashtable_object *ht_object = emalloc(sizeof(hashtable_object));
-	memset(ht_object, 0, sizeof(hashtable_object));
-	ht_object->hashtable = ht_create(655350);
-	zend_object_std_init(&ht_object->std, class_type TSRMLS_CC);
-	retval.handle = zend_objects_store_put(
-			ht_object,
-			(zend_objects_store_dtor_t) zend_objects_destroy_object,
-			(zend_objects_free_object_storage_t) hashtable_free_object_storage_handler,
-			NULL
-			TSRMLS_CC
-			);	
-	retval.handlers = &hashtable_object_handlers;
-	return retval;
+    zend_object_value retval;
+    hashtable_object *ht_object = emalloc(sizeof(hashtable_object));
+    memset(ht_object, 0, sizeof(hashtable_object));
+    ht_object->hashtable = ht_create(655350);
+    zend_object_std_init(&ht_object->std, class_type TSRMLS_CC);
+    retval.handle = zend_objects_store_put(
+                        ht_object,
+                        (zend_objects_store_dtor_t) zend_objects_destroy_object,
+                        (zend_objects_free_object_storage_t) hashtable_free_object_storage_handler,
+                        NULL
+                        TSRMLS_CC
+                    );
+    retval.handlers = &hashtable_object_handlers;
+    return retval;
 }
 
 
 PHP_METHOD(linger_hashtable, set)
 {
-	char *key;
-	long key_len;
-	zval *value, *hrc;
-	hashtable_object *ht_obj;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &value) == FAILURE) {
-		RETURN_FALSE;
-	}
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	ht_set(ht_obj->hashtable, key, value);
-	RETURN_TRUE;	
+    char *key;
+    long key_len;
+    zval *value, *hrc;
+    hashtable_object *ht_obj;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &value) == FAILURE) {
+        RETURN_FALSE;
+    }
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_set(ht_obj->hashtable, key, value);
+    RETURN_TRUE;
 }
 
 PHP_METHOD(linger_hashtable, get)
 {
-	char *key;
-	long key_len;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
-		RETURN_FALSE;
-	}
-	hashtable_object *ht_obj;
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	zval *retval;
-	retval = ht_get(ht_obj->hashtable, key);
-	if (retval == NULL) {
-		RETURN_NULL();
-	} else {
-		RETURN_ZVAL(retval, 1, 0);
-	}
+    char *key;
+    long key_len;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+        RETURN_FALSE;
+    }
+    hashtable_object *ht_obj;
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    zval *retval;
+    retval = ht_get(ht_obj->hashtable, key);
+    if (retval == NULL) {
+        RETURN_NULL();
+    } else {
+        RETURN_ZVAL(retval, 1, 0);
+    }
 }
 
 PHP_METHOD(linger_hashtable, isset)
 {
-	char *key;
-	long key_len;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
-		RETURN_FALSE;
-	}
-	hashtable_object *ht_obj;
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	if (ht_isset(ht_obj->hashtable, key) == 0) {
-		RETURN_TRUE;
-	} else {
-		RETURN_FALSE;
-	}
+    char *key;
+    long key_len;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+        RETURN_FALSE;
+    }
+    hashtable_object *ht_obj;
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    if (ht_isset(ht_obj->hashtable, key) == 0) {
+        RETURN_TRUE;
+    } else {
+        RETURN_FALSE;
+    }
 }
 
 PHP_METHOD(linger_hashtable, del)
 {
-	char *key;
-	long key_len;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
-		RETURN_FALSE;
-	}
-	hashtable_object *ht_obj;
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	if (ht_del(ht_obj->hashtable, key) == 0) {
-		RETURN_TRUE;
-	} else {
-		RETURN_FALSE;
-	}
+    char *key;
+    long key_len;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+        RETURN_FALSE;
+    }
+    hashtable_object *ht_obj;
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    if (ht_del(ht_obj->hashtable, key) == 0) {
+        RETURN_TRUE;
+    } else {
+        RETURN_FALSE;
+    }
 }
 
 PHP_METHOD(linger_hashtable, count)
 {
-	hashtable_object *ht_obj;	
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	RETURN_LONG(ht_obj->hashtable->count);
+    hashtable_object *ht_obj;
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    RETURN_LONG(ht_obj->hashtable->count);
 }
 
 PHP_METHOD(linger_hashtable, foreach)
 {
-	zval *func;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &func) == FAILURE) {
-		RETURN_FALSE;
-	}
-	char *func_name;
-	if (!zend_is_callable(func, 0, &func_name TSRMLS_CC)) {
-		php_error_dcref(NULL TSRMLS_CC, E_ERROR, "Fuction %s is not callable", func_name);
-		RETURN_FALSE;
-	}
-	hashtable_object *ht_obj;
-	hashtable_t *hashtable;
-	ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-	hashtable = ht_obj->hashtable;
-	if (hashtable->count <= 0) {
-		RETURN_TRUE;
-	} else {
-		zval **arg[2];
-		zval *param1, *param2, *retval;
-		MAKE_STD_ZVAL(param1);
-		MAKE_STD_ZVAL(param2);
-		entry_t *curr;
-		for (long i = 0; i < hashtable->size; i++) {
-			curr = hashtable->table[i];
-			while (curr != NULL && curr->key != NULL) {
-				ZVAL_STRING(param1, curr->key, 1);	
-				ZVAL_ZVAL(param2, curr->value, 1, 0);
-				arg[0] = &param1;
-				arg[1] = &param2;
-				if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
-					php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
-				}
-				curr = curr->next;
-			}
-		}
-		zval_ptr_dtor(&param1);
-		zval_ptr_dtor(&param2);
-		RETURN_TRUE;
-	}
+    zval *func;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &func) == FAILURE) {
+        RETURN_FALSE;
+    }
+    char *func_name;
+    if (!zend_is_callable(func, 0, &func_name TSRMLS_CC)) {
+        php_error_dcref(NULL TSRMLS_CC, E_ERROR, "Fuction %s is not callable", func_name);
+        RETURN_FALSE;
+    }
+    hashtable_object *ht_obj;
+    hashtable_t *hashtable;
+    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    hashtable = ht_obj->hashtable;
+    if (hashtable->count <= 0) {
+        RETURN_TRUE;
+    } else {
+        zval **arg[2];
+        zval *param1, *param2, *retval;
+        MAKE_STD_ZVAL(param1);
+        MAKE_STD_ZVAL(param2);
+        entry_t *curr;
+        for (long i = 0; i < hashtable->size; i++) {
+            curr = hashtable->table[i];
+            while (curr != NULL && curr->key != NULL) {
+                ZVAL_STRING(param1, curr->key, 1);
+                ZVAL_ZVAL(param2, curr->value, 1, 0);
+                arg[0] = &param1;
+                arg[1] = &param2;
+                if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
+                    php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
+                }
+                curr = curr->next;
+            }
+        }
+        zval_ptr_dtor(&param1);
+        zval_ptr_dtor(&param2);
+        RETURN_TRUE;
+    }
 }
 
 PHP_METHOD(linger_hashtable, __construct)
@@ -380,15 +380,15 @@ PHP_METHOD(linger_hashtable, __destruct)
 }
 
 static zend_function_entry hashtable_method[] = {
-	PHP_ME(linger_hashtable, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
-	PHP_ME(linger_hashtable, __destruct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
-	PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, count, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(linger_hashtable, foreach, NULL, ZEND_ACC_PUBLIC)
-	PHP_FE_END
+    PHP_ME(linger_hashtable, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
+    PHP_ME(linger_hashtable, __destruct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
+    PHP_ME(linger_hashtable, set, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(linger_hashtable, get, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(linger_hashtable, del, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(linger_hashtable, isset, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(linger_hashtable, count, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(linger_hashtable, foreach, NULL, ZEND_ACC_PUBLIC)
+    PHP_FE_END
 };
 
 
@@ -396,12 +396,12 @@ static zend_function_entry hashtable_method[] = {
  */
 PHP_MINIT_FUNCTION(linger_hashtable)
 {
-	zend_class_entry ce;
-	INIT_CLASS_ENTRY(ce, "Linger\\Hashtable", hashtable_method);
-	hashtable_ce = zend_register_internal_class(&ce TSRMLS_CC);
-	hashtable_ce->create_object = hashtable_create_object_handler;
-	memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	return SUCCESS;
+    zend_class_entry ce;
+    INIT_CLASS_ENTRY(ce, "Linger\\Hashtable", hashtable_method);
+    hashtable_ce = zend_register_internal_class(&ce TSRMLS_CC);
+    hashtable_ce->create_object = hashtable_create_object_handler;
+    memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+    return SUCCESS;
 }
 /* }}} */
 
@@ -409,7 +409,7 @@ PHP_MINIT_FUNCTION(linger_hashtable)
  */
 PHP_MSHUTDOWN_FUNCTION(linger_hashtable)
 {
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -417,7 +417,7 @@ PHP_MSHUTDOWN_FUNCTION(linger_hashtable)
  */
 PHP_RINIT_FUNCTION(linger_hashtable)
 {
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -425,7 +425,7 @@ PHP_RINIT_FUNCTION(linger_hashtable)
  */
 PHP_RSHUTDOWN_FUNCTION(linger_hashtable)
 {
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -433,11 +433,11 @@ PHP_RSHUTDOWN_FUNCTION(linger_hashtable)
  */
 PHP_MINFO_FUNCTION(linger_hashtable)
 {
-	php_info_print_table_start();
-	php_info_print_table_row(2, "linger_hashtable support", "enabled");
-	php_info_print_table_row(2, "version", LINGER_HASHTABLE_VERSION);
-	php_info_print_table_row(2, "author", "liubang <it.liubang@gmail.com>");
-	php_info_print_table_end();
+    php_info_print_table_start();
+    php_info_print_table_row(2, "linger_hashtable support", "enabled");
+    php_info_print_table_row(2, "version", PHP_LINGER_HASHTABLE_VERSION);
+    php_info_print_table_row(2, "author", "liubang <it.liubang@gmail.com>");
+    php_info_print_table_end();
 
 }
 /* }}} */
@@ -447,16 +447,16 @@ PHP_MINFO_FUNCTION(linger_hashtable)
 /* {{{ linger_hashtable_module_entry
  */
 zend_module_entry linger_hashtable_module_entry = {
-	STANDARD_MODULE_HEADER,
-	"linger_hashtable",
-	NULL,
-	PHP_MINIT(linger_hashtable),
-	PHP_MSHUTDOWN(linger_hashtable),
-	PHP_RINIT(linger_hashtable),		
-	PHP_RSHUTDOWN(linger_hashtable),	
-	PHP_MINFO(linger_hashtable),
-	PHP_LINGER_HASHTABLE_VERSION,
-	STANDARD_MODULE_PROPERTIES
+    STANDARD_MODULE_HEADER,
+    "linger_hashtable",
+    NULL,
+    PHP_MINIT(linger_hashtable),
+    PHP_MSHUTDOWN(linger_hashtable),
+    PHP_RINIT(linger_hashtable),
+    PHP_RSHUTDOWN(linger_hashtable),
+    PHP_MINFO(linger_hashtable),
+    PHP_LINGER_HASHTABLE_VERSION,
+    STANDARD_MODULE_PROPERTIES
 };
 /* }}} */
 
