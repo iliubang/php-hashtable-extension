@@ -41,7 +41,12 @@ var_dump($obj->getAge());
 $ht->del("obj");
 var_dump($ht->isset("obj"));
 
+$ht['name'] = 'liubang';
+$ht['hahaahhaha'] = 1243545;
+
 $ht->foreach(function($key, $val) {
     echo "=====key:" . $key . "======\n";
     var_dump($val);
 });
+
+
