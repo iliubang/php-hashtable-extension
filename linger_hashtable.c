@@ -299,6 +299,13 @@ static void linger_hashtable_unset_dimension(zval *object, zval *zv_offset TSRML
 	ht_del(intern->hashtable, offset);
 }
 
+static int linger_hashtable_count_elements(zval *object, long *count TSRMLS_DC)
+{
+	hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+	*count = intern->hashtable->count;
+	return SUCCESS;
+}
+
 PHP_METHOD(linger_hashtable, set)
 {
     char *key;
@@ -448,6 +455,7 @@ PHP_MINIT_FUNCTION(linger_hashtable)
 	hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
 	hashtable_object_handlers.has_dimension = linger_hashtable_has_dimension;
 	hashtable_object_handlers.unset_dimension = linger_hashtable_unset_dimension;
+	hashtable_object_handlers.count_elements = linger_hashtable_count_elements;
     return SUCCESS;
 }
 /* }}} */
