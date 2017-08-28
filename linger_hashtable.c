@@ -51,6 +51,7 @@ typedef struct _hashtable_object {
     hashtable_t *hashtable;
 } hashtable_object;
 
+
 /* Create hashtable */
 static hashtable_t *ht_create(long size)
 {
@@ -255,6 +256,48 @@ zend_object_value hashtable_create_object_handler(zend_class_entry *class_type T
     return retval;
 }
 
+static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int type TSRMLS_DC)
+{
+	hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);	
+	if (!zv_offset) {
+		zend_throw_exception(NULL, "Cannot append to a hashtable", 0 TSRMLS_CC);
+		return NULL;
+	}	
+
+	char *offset = Z_STRVAL_P(zv_offset);
+	return ht_get(intern->hashtable, offset);
+}
+
+static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
+{
+	hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+	char *offset = Z_STRVAL_P(zv_offset);
+	return ht_set(intern->hashtable, offset, value);
+}
+
+static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int check_empty TSRMLS_DC)
+{
+	hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+	char *offset = Z_STRVAL_P(zv_offset);
+	if (ht_isset(intern->hashtable, offset) == 0) {
+		if (check_empty) {
+			zval *value = ht_get(intern->hashtable, offset);
+			int retval;
+			retval = zend_is_true(value);
+			zval_ptr_dtor(&value);
+			return retval;
+		}
+	} else {
+		return 0;
+	}	
+}
+
+static void linger_hashtable_unset_dimension(zval *object, zval *zv_offset TSRMLS_DC)
+{
+	hashtable_object *intern = zend_object_get_store_object(object TSRMLS_CC);
+	char *offset = Z_STRVAL_P(zv_offset);
+	ht_del(intern->hashtable, offset);
+}
 
 PHP_METHOD(linger_hashtable, set)
 {
@@ -401,6 +444,10 @@ PHP_MINIT_FUNCTION(linger_hashtable)
     hashtable_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hashtable_ce->create_object = hashtable_create_object_handler;
     memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	hashtable_object_handlers.read_dimension = linger_hashtable_read_dimension;
+	hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
+	hashtable_object_handlers.has_dimension = linger_hashtable_has_dimension;
+	hashtable_object_handlers.unset_dimension = linger_hashtable_unset_dimension;
     return SUCCESS;
 }
 /* }}} */
