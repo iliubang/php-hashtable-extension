@@ -35,21 +35,21 @@ zend_class_entry *hashtable_ce;
 
 static zend_object_handlers hashtable_object_handlers;
 
-typedef struct entry_s {
+typedef struct _bucket {
     char *key;
     zval *value;
-    struct entry_s *next;
-    struct entry_s *last;
-    struct entry_s *listNext;
-    struct entry_s *listLast;
-} entry_t;
+    struct _bucket *next;
+    struct _bucket *last;
+    struct _bucket *listNext;
+    struct _bucket *listLast;
+} bucket;
 
 typedef struct hashtable_s {
     long size;
     long count;
-    entry_t **table;
-    entry_t *head;
-    entry_t *tail;
+    bucket **table;
+    bucket *head;
+    bucket *tail;
 } hashtable_t;
 
 /* Define hashtable object struct */
@@ -76,7 +76,7 @@ static hashtable_t *ht_create(long size)
     if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
         return NULL;
     }
-    if ((hashtable->table = emalloc(sizeof(entry_t *) * size)) == NULL) {
+    if ((hashtable->table = emalloc(sizeof(bucket *) * size)) == NULL) {
         linger_efree(hashtable);
         return NULL;
     }
@@ -108,10 +108,10 @@ static inline unsigned int ht_hash(hashtable_t *hashtable, char *key)
     return val % hashtable->size;
 }
 
-static entry_t *ht_newpair(char *key, zval *value)
+static bucket *ht_newpair(char *key, zval *value)
 {
-    entry_t *newpair;
-    if ((newpair = emalloc(sizeof(entry_t))) == NULL) {
+    bucket *newpair;
+    if ((newpair = emalloc(sizeof(bucket))) == NULL) {
         return NULL;
     }
 
@@ -132,9 +132,9 @@ static entry_t *ht_newpair(char *key, zval *value)
 static void ht_set(hashtable_t *hashtable, char *key, zval *value)
 {
     int bin = 0;
-    entry_t *newpair = NULL;
-    entry_t *next = NULL;
-    entry_t *last = NULL;
+    bucket *newpair = NULL;
+    bucket *next = NULL;
+    bucket *last = NULL;
 
     bin = ht_hash(hashtable, key);
     next = hashtable->table[bin];
@@ -178,7 +178,7 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
 static zval *ht_get(hashtable_t *hashtable, char *key)
 {
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
@@ -195,7 +195,7 @@ static zval *ht_get(hashtable_t *hashtable, char *key)
 static int ht_isset(hashtable_t *hashtable, char *key)
 {
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
@@ -213,7 +213,7 @@ static int ht_del(hashtable_t *hashtable, char *key)
         return -1;
     }
     long bin = 0;
-    entry_t *pair, *pre;
+    bucket *pair, *pre;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     pre = pair;
@@ -241,7 +241,7 @@ static int ht_del(hashtable_t *hashtable, char *key)
 
 static void ht_destroy(hashtable_t *hashtable)
 {
-    entry_t *curr, *next;
+    bucket *curr, *next;
     if (hashtable->count > 0) {
         for (long i = 0; i < hashtable->size; i++) {
             curr = hashtable->table[i];
@@ -438,7 +438,7 @@ PHP_METHOD(linger_hashtable, foreach)
         zval *param1, *param2, *retval;
         MAKE_STD_ZVAL(param1);
         MAKE_STD_ZVAL(param2);
-        entry_t *curr;
+        bucket *curr;
         curr = hashtable->head;
         while (curr != NULL) {
             ZVAL_STRING(param1, curr->key, 1);
@@ -495,7 +495,7 @@ static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_D
         return FAILURE;
     }
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(iterator->hashtable, iterator->offset);
     pair = iterator->hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
@@ -528,7 +528,7 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(iterator->hashtable, iterator->offset);
     pair = iterator->hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
