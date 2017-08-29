@@ -28,11 +28,8 @@
 #include "php_linger_hashtable.h"
 
 extern *zend_ce_traversable;
-
 static int le_linger_hashtable;
-
 zend_class_entry *hashtable_ce;
-
 static zend_object_handlers hashtable_object_handlers;
 
 typedef struct _bucket {
@@ -175,7 +172,7 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
     }
 }
 
-static zval *ht_get(hashtable_t *hashtable, char *key)
+static bucket *ht_get_bucket(hashtable_t *hashtable, char *key)
 {
     int bin = 0;
     bucket *pair;
@@ -184,11 +181,19 @@ static zval *ht_get(hashtable_t *hashtable, char *key)
     while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
         pair = pair->next;
     }
-
     if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
         return NULL;
     }
 
+    return pair;
+}
+
+static zval *ht_get_zval(hashtable_t *hashtable, char *key)
+{
+    bucket *pair;
+    if ((pair = ht_get_bucket(hashtable, key)) == NULL) {
+        return NULL;
+    }
     return pair->value;
 }
 
@@ -304,7 +309,7 @@ static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int 
     }
 
     char *offset = get_string_from_zval(zv_offset);
-    return ht_get(intern->hashtable, offset);
+    return ht_get_zval(intern->hashtable, offset);
 }
 
 static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
@@ -320,7 +325,7 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
     char *offset = get_string_from_zval(zv_offset);
     if (ht_isset(intern->hashtable, offset) == 0) {
         if (check_empty) {
-            zval *value = ht_get(intern->hashtable, offset);
+            zval *value = ht_get_zval(intern->hashtable, offset);
             int retval;
             retval = zend_is_true(value);
             zval_ptr_dtor(&value);
@@ -369,7 +374,7 @@ PHP_METHOD(linger_hashtable, get)
     hashtable_object *ht_obj;
     ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
     zval *retval;
-    retval = ht_get(ht_obj->hashtable, key);
+    retval = ht_get_zval(ht_obj->hashtable, key);
     if (retval == NULL) {
         RETURN_NULL();
     } else {
@@ -494,15 +499,11 @@ static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_D
     if (iterator->offset == NULL) {
         return FAILURE;
     }
-    int bin = 0;
     bucket *pair;
-    bin = ht_hash(iterator->hashtable, iterator->offset);
-    pair = iterator->hashtable->table[bin];
-    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-        pair = pair->next;
-    }
-    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+    if ((pair = ht_get_bucket(iterator->hashtable, iterator->offset)) == NULL) {
         return FAILURE;
+    } else {
+        return SUCCESS;
     }
     return SUCCESS;
 }
@@ -513,8 +514,7 @@ static void linger_hashtable_iterator_get_current_data(zend_object_iterator *int
     if (iterator->current) {
         zval_ptr_dtor(&iterator->current);
     }
-
-    iterator->current = ht_get(iterator->hashtable, iterator->offset);
+    iterator->current = ht_get_zval(iterator->hashtable, iterator->offset);
     *data = &iterator->current;
 }
 
@@ -529,12 +529,7 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
     bucket *pair;
-    bin = ht_hash(iterator->hashtable, iterator->offset);
-    pair = iterator->hashtable->table[bin];
-    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-        pair = pair->next;
-    }
-    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+    if ((pair = ht_get_bucket(iterator->hashtable, iterator->offset)) == NULL) {
         return;
     }
     if (pair->listNext == NULL) {
@@ -547,11 +542,11 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
 static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS_DC)
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
-    if (iterator->hashtable->head)
+    if (iterator->hashtable->head) {
         iterator->offset = iterator->hashtable->head->key;
-    else
+    } else {
         iterator->offset = NULL;
-
+    }
     iterator->current = NULL;
 }
 
