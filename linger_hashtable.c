@@ -270,7 +270,7 @@ static void ht_destroy(hashtable_t *hashtable)
             }
         }
     }
-    linger_efree(hashtable);
+    //linger_efree(hashtable);
 }
 
 static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
@@ -280,7 +280,11 @@ static void hashtable_free_object_storage_handler(hashtable_object *ht_object TS
     efree(ht_object);
 }
 
-create_object_API hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
+#if PHP_MAJOR_VERSION < 7
+
+#define linger_get_object(object)   zend_object_store_get_object(object)
+
+zend_object_value hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
 {
     zend_object_value retval;
     hashtable_object *ht_object = emalloc(sizeof(hashtable_object));
@@ -297,6 +301,35 @@ create_object_API hashtable_create_object_handler(zend_class_entry *class_type T
     retval.handlers = &hashtable_object_handlers;
     return retval;
 }
+#else
+
+#define linger_get_object(object)  (hashtable_object *)((char *)object - XtoffsetOf(hashtable_object, std))
+
+zend_object *hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
+{
+    size_t size = sizeof(hashtable_object) + zend_object_properties_size(class_type);
+    hashtable_object *ht_object = emalloc(size);
+    memset(ht_object, 0, size);
+    ht_object->hashtable = ht_create(655350);
+    zend_object_std_init(&ht_object->std, class_type TSRMLS_CC);
+    ht_object->std.handlers = &hashtable_object_handlers;
+    return &ht_object->std;
+}
+
+static void hashtable_destroy_object_handler(zend_object *object)
+{
+    hashtable_object *ht_object = linger_get_object(object);
+    ht_destroy(ht_object->hashtable);
+    zend_objects_destroy_object(object);
+}
+
+static void hashtable_free_object_handler(zend_object *object)
+{
+    hashtable_object *ht_object = linger_get_object(object);
+    linger_efree(ht_object->hashtable);
+    zend_object_std_dtor(object);
+}
+#endif
 
 static char *get_string_from_zval(zval *val)
 {
@@ -607,6 +640,10 @@ PHP_MINIT_FUNCTION(linger_hashtable)
     hashtable_ce->iterator_funcs.funcs = &linger_hashtable_iterator_funcs;
     zend_class_implements(hashtable_ce TSRMLS_CC, 1, zend_ce_traversable);
     memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+#if PHP_MAJOR_VERSION >= 7
+    hashtable_object_handlers.free_obj = hashtable_free_object_handler;
+    hashtable_object_handlers.destroy_obj = hashtable_destroy_object_handler;
+#endif
     hashtable_object_handlers.read_dimension = linger_hashtable_read_dimension;
     hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
     hashtable_object_handlers.has_dimension = linger_hashtable_has_dimension;
