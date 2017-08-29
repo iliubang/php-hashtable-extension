@@ -67,6 +67,10 @@ $ht->foreach(function($key, $val) {
     echo "key:" . $key . " === val:".$val."\n";
 });
 
+foreach ($ht as $key => $val) {
+    echo "key:{$key} === val:{$val}\n";
+}
+
 var_dump($ht->del("hello12"));
 var_dump($ht->isset("hello13"));
 ```
