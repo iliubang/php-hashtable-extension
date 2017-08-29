@@ -27,7 +27,7 @@
 #include "ext/standard/info.h"
 #include "php_linger_hashtable.h"
 
-extern *zend_ce_traversable;
+extern zend_class_entry *zend_ce_traversable;
 static int le_linger_hashtable;
 zend_class_entry *hashtable_ce;
 static zend_object_handlers hashtable_object_handlers;
