@@ -37,12 +37,17 @@ typedef struct entry_s {
     char *key;
     zval *value;
     struct entry_s *next;
+	struct entry_s *last;
+	struct entry_s *listNext;
+	struct entry_s *listLast;
 } entry_t;
 
 typedef struct hashtable_s {
     long size;
     long count;
     entry_t **table;
+	entry_t *head;
+	entry_t *tail;
 } hashtable_t;
 
 /* Define hashtable object struct */
@@ -57,26 +62,23 @@ static hashtable_t *ht_create(long size)
 {
     hashtable_t *hashtable = NULL;
     long i;
-
     if (size < 1) {
         return NULL;
     }
-
     if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
         return NULL;
     }
-
     if ((hashtable->table = emalloc(sizeof(entry_t *) * size)) == NULL) {
         linger_efree(hashtable);
         return NULL;
     }
-
     for (i = 0; i < size; i++) {
         hashtable->table[i] = NULL;
     }
-
     hashtable->size = size;
     hashtable->count = 0;
+	hashtable->head = NULL;
+	hashtable->tail = NULL;
     return hashtable;
 }
 
@@ -113,6 +115,9 @@ static entry_t *ht_newpair(char *key, zval *value)
     MAKE_STD_ZVAL(newpair->value);
     ZVAL_ZVAL(newpair->value, value, 1, 0);
     newpair->next = NULL;
+	newpair->last = NULL;
+	newpair->listNext = NULL;
+	newpair->listLast = NULL;
     return newpair;
 }
 
@@ -131,17 +136,31 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
     }
 
     if (next != NULL && next->key != NULL && strcmp(key, next->key) == 0) {
+		/* reset a value */
         linger_efree(next->value);
         next->value = estrdup(value);
     } else {
+		/* insert a new element */
         newpair = ht_newpair(key, value);
+		if (hashtable->head == NULL) {
+			hashtable->head = newpair;
+		}
+		if (hashtable->tail == NULL) {
+			hashtable->tail = newpair;
+		} else {
+			newpair->listLast = hashtable->tail;
+			hashtable->tail->listNext = newpair;
+			hashtable->tail = newpair;
+		}
         if (next == hashtable->table[bin]) {
             newpair->next = NULL;
             hashtable->table[bin] = newpair;
         } else if (next == NULL) {
+			newpair->last = last;
             last->next = newpair;
         } else {
             newpair->next = next;
+			newpair->last = last;
             last->next = newpair;
         }
         hashtable->count++;
@@ -256,6 +275,18 @@ zend_object_value hashtable_create_object_handler(zend_class_entry *class_type T
     return retval;
 }
 
+static char *get_string_from_zval(zval *val)
+{
+	if (Z_TYPE_P(val) == IS_STRING) {
+		return Z_STRVAL_P(val);
+	} else {
+		zval tmp = *val;
+		zval_copy_ctor(&tmp);
+		convert_to_string(&tmp);
+		return Z_STRVAL(tmp);
+	}
+}
+
 static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int type TSRMLS_DC)
 {
     hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
@@ -264,21 +295,21 @@ static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int 
         return NULL;
     }
 
-    char *offset = Z_STRVAL_P(zv_offset);
+    char *offset = get_string_from_zval(zv_offset);
     return ht_get(intern->hashtable, offset);
 }
 
 static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
 {
     hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
-    char *offset = Z_STRVAL_P(zv_offset);
+    char *offset = get_string_from_zval(zv_offset);
     return ht_set(intern->hashtable, offset, value);
 }
 
 static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int check_empty TSRMLS_DC)
 {
     hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
-    char *offset = Z_STRVAL_P(zv_offset);
+    char *offset = get_string_from_zval(zv_offset);
     if (ht_isset(intern->hashtable, offset) == 0) {
         if (check_empty) {
             zval *value = ht_get(intern->hashtable, offset);
@@ -295,7 +326,7 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
 static void linger_hashtable_unset_dimension(zval *object, zval *zv_offset TSRMLS_DC)
 {
     hashtable_object *intern = zend_object_get_store_object(object TSRMLS_CC);
-    char *offset = Z_STRVAL_P(zv_offset);
+    char *offset = get_string_from_zval(zv_offset);
     ht_del(intern->hashtable, offset);
 }
 
@@ -400,19 +431,17 @@ PHP_METHOD(linger_hashtable, foreach)
         MAKE_STD_ZVAL(param1);
         MAKE_STD_ZVAL(param2);
         entry_t *curr;
-        for (long i = 0; i < hashtable->size; i++) {
-            curr = hashtable->table[i];
-            while (curr != NULL && curr->key != NULL) {
-                ZVAL_STRING(param1, curr->key, 1);
-                ZVAL_ZVAL(param2, curr->value, 1, 0);
-                arg[0] = &param1;
-                arg[1] = &param2;
-                if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
-                    php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
-                }
-                curr = curr->next;
+		curr = hashtable->head;
+		while (curr != NULL) {
+            ZVAL_STRING(param1, curr->key, 1);
+            ZVAL_ZVAL(param2, curr->value, 1, 0);
+            arg[0] = &param1;
+            arg[1] = &param2;
+            if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
+                php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
             }
-        }
+            curr = curr->listNext;
+		}
         zval_ptr_dtor(&param1);
         zval_ptr_dtor(&param2);
         RETURN_TRUE;
