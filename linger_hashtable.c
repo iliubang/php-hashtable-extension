@@ -27,6 +27,8 @@
 #include "ext/standard/info.h"
 #include "php_linger_hashtable.h"
 
+extern *zend_ce_traversable;
+
 static int le_linger_hashtable;
 
 zend_class_entry *hashtable_ce;
@@ -56,6 +58,12 @@ typedef struct _hashtable_object {
     hashtable_t *hashtable;
 } hashtable_object;
 
+typedef struct _hashtable_iterator {
+	zend_object_iterator intern;
+	hashtable_t *hashtable;
+	char *offset;
+	zval *current;
+} hashtable_iterator;
 
 /* Create hashtable */
 static hashtable_t *ht_create(long size)
@@ -470,15 +478,124 @@ static zend_function_entry hashtable_method[] = {
     PHP_FE_END
 };
 
+static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_DC)
+{
+	hashtable_iterator *iterator = (hashtable_iterator *) intern;
+	if (iterator->current) {
+		zval_ptr_dtor(&iterator->current);
+	}
+	zval_ptr_dtor((zval **)&intern->data);
+	linger_efree(iterator);
+}
 
-/* {{{ PHP_MINIT_FUNCTION
- */
+static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_DC)
+{
+	hashtable_iterator *iterator = (hashtable_iterator *) intern;
+    if (iterator->offset == NULL) {
+        return FAILURE;
+    }
+	int bin = 0;
+	entry_t *pair;
+	bin = ht_hash(iterator->hashtable, iterator->offset);
+    pair = iterator->hashtable->table[bin];
+	while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
+		pair = pair->next;
+	}
+	if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+		return FAILURE;
+	}
+	return SUCCESS;
+}
+
+static void linger_hashtable_iterator_get_current_data(zend_object_iterator *intern, zval ***data TSRMLS_DC)
+{
+	hashtable_iterator *iterator = (hashtable_iterator *) intern;
+	if (iterator->current) {
+		zval_ptr_dtor(&iterator->current);
+	}
+
+	iterator->current = ht_get(iterator->hashtable, iterator->offset);
+	*data = &iterator->current;
+}
+
+static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key TSRMLS_DC)
+{
+    hashtable_iterator *iterator = (hashtable_iterator *)intern;
+    ZVAL_STRING(key, iterator->offset, 0);
+}
+
+static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern TSRMLS_DC)
+{
+    hashtable_iterator *iterator = (hashtable_iterator *)intern;
+	int bin = 0;
+	entry_t *pair;
+	bin = ht_hash(iterator->hashtable, iterator->offset);
+    pair = iterator->hashtable->table[bin];
+	while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
+		pair = pair->next;
+	}
+	if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+		return;
+	}
+    if (pair->listNext == NULL) {
+        iterator->offset = NULL;
+    } else {
+        iterator->offset = pair->listNext->key;
+    }
+}
+
+static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS_DC)
+{
+    hashtable_iterator *iterator = (hashtable_iterator *) intern;
+    if (iterator->hashtable->head)
+        iterator->offset = iterator->hashtable->head->key;
+    else
+        iterator->offset = NULL;
+
+    iterator->current = NULL;
+}
+
+static zend_object_iterator_funcs linger_hashtable_iterator_funcs = {
+	linger_hashtable_iterator_dtor,	
+	linger_hashtable_iterator_valid,
+	linger_hashtable_iterator_get_current_data,
+	linger_hashtable_iterator_get_current_key,
+	linger_hashtable_iterator_move_forward,
+	linger_hashtable_iterator_rewind
+};
+
+zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *object, int by_ref TSRMLS_DC)
+{
+    hashtable_iterator *iterator;
+    if (by_ref) {
+        zend_throw_exception(NULL, "Cannot iterate by refererce", 0 TSRMLS_CC);
+        return NULL;
+    }
+    iterator = emalloc(sizeof(hashtable_iterator));
+    iterator->intern.funcs = &linger_hashtable_iterator_funcs;
+    iterator->intern.data = object;
+    Z_ADDREF_P(object);
+
+    hashtable_object *obj = zend_object_store_get_object(object TSRMLS_CC);
+    iterator->hashtable = obj->hashtable;
+    if (obj->hashtable->head != NULL) {
+        iterator->offset = obj->hashtable->head->key;
+    } else  {
+        iterator->offset = NULL;
+    }
+    iterator->current = NULL;
+    return (zend_object_iterator *)iterator;
+}
+
 PHP_MINIT_FUNCTION(linger_hashtable)
 {
     zend_class_entry ce;
     INIT_CLASS_ENTRY(ce, "Linger\\Hashtable", hashtable_method);
     hashtable_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hashtable_ce->create_object = hashtable_create_object_handler;
+    hashtable_ce->get_iterator = linger_hashtable_get_iterator;
+    hashtable_ce->iterator_funcs.funcs = &linger_hashtable_iterator_funcs;
+    zend_class_implements(hashtable_ce TSRMLS_CC, 1, zend_ce_traversable);
     memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     hashtable_object_handlers.read_dimension = linger_hashtable_read_dimension;
     hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
@@ -487,34 +604,22 @@ PHP_MINIT_FUNCTION(linger_hashtable)
     hashtable_object_handlers.count_elements = linger_hashtable_count_elements;
     return SUCCESS;
 }
-/* }}} */
 
-/* {{{ PHP_MSHUTDOWN_FUNCTION
- */
 PHP_MSHUTDOWN_FUNCTION(linger_hashtable)
 {
     return SUCCESS;
 }
-/* }}} */
 
-/* {{{ PHP_RINIT_FUNCTION
- */
 PHP_RINIT_FUNCTION(linger_hashtable)
 {
     return SUCCESS;
 }
-/* }}} */
 
-/* {{{ PHP_RSHUTDOWN_FUNCTION
- */
 PHP_RSHUTDOWN_FUNCTION(linger_hashtable)
 {
     return SUCCESS;
 }
-/* }}} */
 
-/* {{{ PHP_MINFO_FUNCTION
- */
 PHP_MINFO_FUNCTION(linger_hashtable)
 {
     php_info_print_table_start();
@@ -524,12 +629,7 @@ PHP_MINFO_FUNCTION(linger_hashtable)
     php_info_print_table_end();
 
 }
-/* }}} */
 
-/* }}} */
-
-/* {{{ linger_hashtable_module_entry
- */
 zend_module_entry linger_hashtable_module_entry = {
     STANDARD_MODULE_HEADER,
     "linger_hashtable",
@@ -542,17 +642,8 @@ zend_module_entry linger_hashtable_module_entry = {
     PHP_LINGER_HASHTABLE_VERSION,
     STANDARD_MODULE_PROPERTIES
 };
-/* }}} */
 
 #ifdef COMPILE_DL_LINGER_HASHTABLE
 ZEND_GET_MODULE(linger_hashtable)
 #endif
 
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */
