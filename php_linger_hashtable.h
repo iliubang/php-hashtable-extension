@@ -54,11 +54,11 @@ extern zend_module_entry linger_hashtable_module_entry;
 #	define LINGER_MAKE_STD_ZVAL(p)		zval _stack_zval_##p; p = &(_stack_zval_##p)
 #	define linger_zval_ptr_dtor(p)		zval_ptr_dtor(*p)
 #	define linger_zval_add_ref(p)		Z_TRY_ADDREF_P(*p)
-#	define LINGER_ZVAL_STRINGL(z, s, 1, dup)	ZVAL_STRINGL(z, s, 1)
+#	define LINGER_ZVAL_STRINGL(z, s, l, dup)	ZVAL_STRINGL(z, s, l)
 #	define LINGER_ZVAL_STRING(z, s, dup)		ZVAL_STRING(z, s)
-#	define LINGER_RETURN_STRINGL(s, 1, dup)		RETURN_STRINGL(z, 1)
+#	define LINGER_RETURN_STRINGL(s, l, dup)		RETURN_STRINGL(z, l)
 #	define LINGER_RETURN_STRING(s, dup)		RETURN_STRING(s)
-#	define LINGER_RETVAL_STRINGL(s, 1, dup)		RETVAL_STRINGL(s, 1)
+#	define LINGER_RETVAL_STRINGL(s, l, dup)		RETVAL_STRINGL(s, l)
 #endif
 
 /*

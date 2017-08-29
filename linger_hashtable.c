@@ -116,9 +116,10 @@ static bucket *ht_newpair(char *key, zval *value)
         linger_efree(newpair);
         return NULL;
     }
-
-    LINGER_MAKE_STD_ZVAL(newpair->value);
-    ZVAL_ZVAL(newpair->value, value, 1, 0);
+    zval *newpair_value;
+    LINGER_MAKE_STD_ZVAL(newpair_value);
+    ZVAL_ZVAL(newpair_value, value, 1, 0);
+    newpair->value = newpair_value;
     newpair->next = NULL;
     newpair->last = NULL;
     newpair->listNext = NULL;
