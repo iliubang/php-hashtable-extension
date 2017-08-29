@@ -28,28 +28,25 @@
 #include "php_linger_hashtable.h"
 
 extern *zend_ce_traversable;
-
 static int le_linger_hashtable;
-
 zend_class_entry *hashtable_ce;
-
 static zend_object_handlers hashtable_object_handlers;
 
-typedef struct entry_s {
+typedef struct _bucket {
     char *key;
     zval *value;
-    struct entry_s *next;
-    struct entry_s *last;
-    struct entry_s *listNext;
-    struct entry_s *listLast;
-} entry_t;
+    struct _bucket *next;
+    struct _bucket *last;
+    struct _bucket *listNext;
+    struct _bucket *listLast;
+} bucket;
 
 typedef struct hashtable_s {
     long size;
     long count;
-    entry_t **table;
-    entry_t *head;
-    entry_t *tail;
+    bucket **table;
+    bucket *head;
+    bucket *tail;
 } hashtable_t;
 
 /* Define hashtable object struct */
@@ -76,7 +73,7 @@ static hashtable_t *ht_create(long size)
     if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
         return NULL;
     }
-    if ((hashtable->table = emalloc(sizeof(entry_t *) * size)) == NULL) {
+    if ((hashtable->table = emalloc(sizeof(bucket *) * size)) == NULL) {
         linger_efree(hashtable);
         return NULL;
     }
@@ -108,10 +105,10 @@ static inline unsigned int ht_hash(hashtable_t *hashtable, char *key)
     return val % hashtable->size;
 }
 
-static entry_t *ht_newpair(char *key, zval *value)
+static bucket *ht_newpair(char *key, zval *value)
 {
-    entry_t *newpair;
-    if ((newpair = emalloc(sizeof(entry_t))) == NULL) {
+    bucket *newpair;
+    if ((newpair = emalloc(sizeof(bucket))) == NULL) {
         return NULL;
     }
 
@@ -132,9 +129,9 @@ static entry_t *ht_newpair(char *key, zval *value)
 static void ht_set(hashtable_t *hashtable, char *key, zval *value)
 {
     int bin = 0;
-    entry_t *newpair = NULL;
-    entry_t *next = NULL;
-    entry_t *last = NULL;
+    bucket *newpair = NULL;
+    bucket *next = NULL;
+    bucket *last = NULL;
 
     bin = ht_hash(hashtable, key);
     next = hashtable->table[bin];
@@ -175,27 +172,35 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
     }
 }
 
-static zval *ht_get(hashtable_t *hashtable, char *key)
+static bucket *ht_get_bucket(hashtable_t *hashtable, char *key)
 {
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
         pair = pair->next;
     }
-
     if (pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
         return NULL;
     }
 
+    return pair;
+}
+
+static zval *ht_get_zval(hashtable_t *hashtable, char *key)
+{
+    bucket *pair;
+    if ((pair = ht_get_bucket(hashtable, key)) == NULL) {
+        return NULL;
+    }
     return pair->value;
 }
 
 static int ht_isset(hashtable_t *hashtable, char *key)
 {
     int bin = 0;
-    entry_t *pair;
+    bucket *pair;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     while (pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
@@ -213,7 +218,7 @@ static int ht_del(hashtable_t *hashtable, char *key)
         return -1;
     }
     long bin = 0;
-    entry_t *pair, *pre;
+    bucket *pair, *pre;
     bin = ht_hash(hashtable, key);
     pair = hashtable->table[bin];
     pre = pair;
@@ -241,7 +246,7 @@ static int ht_del(hashtable_t *hashtable, char *key)
 
 static void ht_destroy(hashtable_t *hashtable)
 {
-    entry_t *curr, *next;
+    bucket *curr, *next;
     if (hashtable->count > 0) {
         for (long i = 0; i < hashtable->size; i++) {
             curr = hashtable->table[i];
@@ -304,7 +309,7 @@ static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int 
     }
 
     char *offset = get_string_from_zval(zv_offset);
-    return ht_get(intern->hashtable, offset);
+    return ht_get_zval(intern->hashtable, offset);
 }
 
 static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
@@ -320,7 +325,7 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
     char *offset = get_string_from_zval(zv_offset);
     if (ht_isset(intern->hashtable, offset) == 0) {
         if (check_empty) {
-            zval *value = ht_get(intern->hashtable, offset);
+            zval *value = ht_get_zval(intern->hashtable, offset);
             int retval;
             retval = zend_is_true(value);
             zval_ptr_dtor(&value);
@@ -369,7 +374,7 @@ PHP_METHOD(linger_hashtable, get)
     hashtable_object *ht_obj;
     ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
     zval *retval;
-    retval = ht_get(ht_obj->hashtable, key);
+    retval = ht_get_zval(ht_obj->hashtable, key);
     if (retval == NULL) {
         RETURN_NULL();
     } else {
@@ -438,7 +443,7 @@ PHP_METHOD(linger_hashtable, foreach)
         zval *param1, *param2, *retval;
         MAKE_STD_ZVAL(param1);
         MAKE_STD_ZVAL(param2);
-        entry_t *curr;
+        bucket *curr;
         curr = hashtable->head;
         while (curr != NULL) {
             ZVAL_STRING(param1, curr->key, 1);
@@ -494,15 +499,11 @@ static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_D
     if (iterator->offset == NULL) {
         return FAILURE;
     }
-    int bin = 0;
-    entry_t *pair;
-    bin = ht_hash(iterator->hashtable, iterator->offset);
-    pair = iterator->hashtable->table[bin];
-    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-        pair = pair->next;
-    }
-    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+    bucket *pair;
+    if ((pair = ht_get_bucket(iterator->hashtable, iterator->offset)) == NULL) {
         return FAILURE;
+    } else {
+        return SUCCESS;
     }
     return SUCCESS;
 }
@@ -513,8 +514,7 @@ static void linger_hashtable_iterator_get_current_data(zend_object_iterator *int
     if (iterator->current) {
         zval_ptr_dtor(&iterator->current);
     }
-
-    iterator->current = ht_get(iterator->hashtable, iterator->offset);
+    iterator->current = ht_get_zval(iterator->hashtable, iterator->offset);
     *data = &iterator->current;
 }
 
@@ -528,13 +528,8 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
-    entry_t *pair;
-    bin = ht_hash(iterator->hashtable, iterator->offset);
-    pair = iterator->hashtable->table[bin];
-    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-        pair = pair->next;
-    }
-    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+    bucket *pair;
+    if ((pair = ht_get_bucket(iterator->hashtable, iterator->offset)) == NULL) {
         return;
     }
     if (pair->listNext == NULL) {
@@ -547,11 +542,11 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
 static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS_DC)
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
-    if (iterator->hashtable->head)
+    if (iterator->hashtable->head) {
         iterator->offset = iterator->hashtable->head->key;
-    else
+    } else {
         iterator->offset = NULL;
-
+    }
     iterator->current = NULL;
 }
 
