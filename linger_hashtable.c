@@ -41,7 +41,7 @@ typedef struct _bucket {
     struct _bucket *listLast;
 } bucket;
 
-typedef struct hashtable_s {
+typedef struct _hashtable_s {
     long size;
     long count;
     bucket **table;
