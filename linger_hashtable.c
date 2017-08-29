@@ -49,11 +49,20 @@ typedef struct _hashtable_s {
     bucket *tail;
 } hashtable_t;
 
+typedef struct _hashtable_object hashtable_object;
+
+#if PHP_MAJOR_VERSION < 7
 /* Define hashtable object struct */
-typedef struct _hashtable_object {
+struct _hashtable_object {
     zend_object std;
     hashtable_t *hashtable;
-} hashtable_object;
+};
+#else
+struct _hashtable_object {
+    hashtable_t *hashtable;
+    zend_object std;
+};
+#endif
 
 typedef struct _hashtable_iterator {
     zend_object_iterator intern;
@@ -271,7 +280,7 @@ static void hashtable_free_object_storage_handler(hashtable_object *ht_object TS
     efree(ht_object);
 }
 
-zend_object_value hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
+create_object_API hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
 {
     zend_object_value retval;
     hashtable_object *ht_object = emalloc(sizeof(hashtable_object));
