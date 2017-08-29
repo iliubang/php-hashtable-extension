@@ -39,17 +39,17 @@ typedef struct entry_s {
     char *key;
     zval *value;
     struct entry_s *next;
-	struct entry_s *last;
-	struct entry_s *listNext;
-	struct entry_s *listLast;
+    struct entry_s *last;
+    struct entry_s *listNext;
+    struct entry_s *listLast;
 } entry_t;
 
 typedef struct hashtable_s {
     long size;
     long count;
     entry_t **table;
-	entry_t *head;
-	entry_t *tail;
+    entry_t *head;
+    entry_t *tail;
 } hashtable_t;
 
 /* Define hashtable object struct */
@@ -59,10 +59,10 @@ typedef struct _hashtable_object {
 } hashtable_object;
 
 typedef struct _hashtable_iterator {
-	zend_object_iterator intern;
-	hashtable_t *hashtable;
-	char *offset;
-	zval *current;
+    zend_object_iterator intern;
+    hashtable_t *hashtable;
+    char *offset;
+    zval *current;
 } hashtable_iterator;
 
 /* Create hashtable */
@@ -85,8 +85,8 @@ static hashtable_t *ht_create(long size)
     }
     hashtable->size = size;
     hashtable->count = 0;
-	hashtable->head = NULL;
-	hashtable->tail = NULL;
+    hashtable->head = NULL;
+    hashtable->tail = NULL;
     return hashtable;
 }
 
@@ -123,9 +123,9 @@ static entry_t *ht_newpair(char *key, zval *value)
     MAKE_STD_ZVAL(newpair->value);
     ZVAL_ZVAL(newpair->value, value, 1, 0);
     newpair->next = NULL;
-	newpair->last = NULL;
-	newpair->listNext = NULL;
-	newpair->listLast = NULL;
+    newpair->last = NULL;
+    newpair->listNext = NULL;
+    newpair->listLast = NULL;
     return newpair;
 }
 
@@ -144,31 +144,31 @@ static void ht_set(hashtable_t *hashtable, char *key, zval *value)
     }
 
     if (next != NULL && next->key != NULL && strcmp(key, next->key) == 0) {
-		/* reset a value */
+        /* reset a value */
         linger_efree(next->value);
         next->value = estrdup(value);
     } else {
-		/* insert a new element */
+        /* insert a new element */
         newpair = ht_newpair(key, value);
-		if (hashtable->head == NULL) {
-			hashtable->head = newpair;
-		}
-		if (hashtable->tail == NULL) {
-			hashtable->tail = newpair;
-		} else {
-			newpair->listLast = hashtable->tail;
-			hashtable->tail->listNext = newpair;
-			hashtable->tail = newpair;
-		}
+        if (hashtable->head == NULL) {
+            hashtable->head = newpair;
+        }
+        if (hashtable->tail == NULL) {
+            hashtable->tail = newpair;
+        } else {
+            newpair->listLast = hashtable->tail;
+            hashtable->tail->listNext = newpair;
+            hashtable->tail = newpair;
+        }
         if (next == hashtable->table[bin]) {
             newpair->next = NULL;
             hashtable->table[bin] = newpair;
         } else if (next == NULL) {
-			newpair->last = last;
+            newpair->last = last;
             last->next = newpair;
         } else {
             newpair->next = next;
-			newpair->last = last;
+            newpair->last = last;
             last->next = newpair;
         }
         hashtable->count++;
@@ -285,14 +285,14 @@ zend_object_value hashtable_create_object_handler(zend_class_entry *class_type T
 
 static char *get_string_from_zval(zval *val)
 {
-	if (Z_TYPE_P(val) == IS_STRING) {
-		return Z_STRVAL_P(val);
-	} else {
-		zval tmp = *val;
-		zval_copy_ctor(&tmp);
-		convert_to_string(&tmp);
-		return Z_STRVAL(tmp);
-	}
+    if (Z_TYPE_P(val) == IS_STRING) {
+        return Z_STRVAL_P(val);
+    } else {
+        zval tmp = *val;
+        zval_copy_ctor(&tmp);
+        convert_to_string(&tmp);
+        return Z_STRVAL(tmp);
+    }
 }
 
 static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int type TSRMLS_DC)
@@ -439,8 +439,8 @@ PHP_METHOD(linger_hashtable, foreach)
         MAKE_STD_ZVAL(param1);
         MAKE_STD_ZVAL(param2);
         entry_t *curr;
-		curr = hashtable->head;
-		while (curr != NULL) {
+        curr = hashtable->head;
+        while (curr != NULL) {
             ZVAL_STRING(param1, curr->key, 1);
             ZVAL_ZVAL(param2, curr->value, 1, 0);
             arg[0] = &param1;
@@ -449,7 +449,7 @@ PHP_METHOD(linger_hashtable, foreach)
                 php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
             }
             curr = curr->listNext;
-		}
+        }
         zval_ptr_dtor(&param1);
         zval_ptr_dtor(&param2);
         RETURN_TRUE;
@@ -480,42 +480,42 @@ static zend_function_entry hashtable_method[] = {
 
 static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_DC)
 {
-	hashtable_iterator *iterator = (hashtable_iterator *) intern;
-	if (iterator->current) {
-		zval_ptr_dtor(&iterator->current);
-	}
-	zval_ptr_dtor((zval **)&intern->data);
-	linger_efree(iterator);
+    hashtable_iterator *iterator = (hashtable_iterator *) intern;
+    if (iterator->current) {
+        zval_ptr_dtor(&iterator->current);
+    }
+    zval_ptr_dtor((zval **)&intern->data);
+    linger_efree(iterator);
 }
 
 static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_DC)
 {
-	hashtable_iterator *iterator = (hashtable_iterator *) intern;
+    hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->offset == NULL) {
         return FAILURE;
     }
-	int bin = 0;
-	entry_t *pair;
-	bin = ht_hash(iterator->hashtable, iterator->offset);
+    int bin = 0;
+    entry_t *pair;
+    bin = ht_hash(iterator->hashtable, iterator->offset);
     pair = iterator->hashtable->table[bin];
-	while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-		pair = pair->next;
-	}
-	if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
-		return FAILURE;
-	}
-	return SUCCESS;
+    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
+        pair = pair->next;
+    }
+    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+        return FAILURE;
+    }
+    return SUCCESS;
 }
 
 static void linger_hashtable_iterator_get_current_data(zend_object_iterator *intern, zval ***data TSRMLS_DC)
 {
-	hashtable_iterator *iterator = (hashtable_iterator *) intern;
-	if (iterator->current) {
-		zval_ptr_dtor(&iterator->current);
-	}
+    hashtable_iterator *iterator = (hashtable_iterator *) intern;
+    if (iterator->current) {
+        zval_ptr_dtor(&iterator->current);
+    }
 
-	iterator->current = ht_get(iterator->hashtable, iterator->offset);
-	*data = &iterator->current;
+    iterator->current = ht_get(iterator->hashtable, iterator->offset);
+    *data = &iterator->current;
 }
 
 static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key TSRMLS_DC)
@@ -527,16 +527,16 @@ static void linger_hashtable_iterator_get_current_key(zend_object_iterator *inte
 static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern TSRMLS_DC)
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
-	int bin = 0;
-	entry_t *pair;
-	bin = ht_hash(iterator->hashtable, iterator->offset);
+    int bin = 0;
+    entry_t *pair;
+    bin = ht_hash(iterator->hashtable, iterator->offset);
     pair = iterator->hashtable->table[bin];
-	while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
-		pair = pair->next;
-	}
-	if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
-		return;
-	}
+    while (pair != NULL && pair->key != NULL && strcmp(iterator->offset, pair->key) > 0) {
+        pair = pair->next;
+    }
+    if (pair == NULL || pair->key == NULL || strcmp(iterator->offset, pair->key) != 0) {
+        return;
+    }
     if (pair->listNext == NULL) {
         iterator->offset = NULL;
     } else {
@@ -556,12 +556,12 @@ static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS
 }
 
 static zend_object_iterator_funcs linger_hashtable_iterator_funcs = {
-	linger_hashtable_iterator_dtor,	
-	linger_hashtable_iterator_valid,
-	linger_hashtable_iterator_get_current_data,
-	linger_hashtable_iterator_get_current_key,
-	linger_hashtable_iterator_move_forward,
-	linger_hashtable_iterator_rewind
+    linger_hashtable_iterator_dtor,
+    linger_hashtable_iterator_valid,
+    linger_hashtable_iterator_get_current_data,
+    linger_hashtable_iterator_get_current_key,
+    linger_hashtable_iterator_move_forward,
+    linger_hashtable_iterator_rewind
 };
 
 zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *object, int by_ref TSRMLS_DC)
