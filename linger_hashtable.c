@@ -331,8 +331,9 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
             zval_ptr_dtor(&value);
             return retval;
         }
+        return SUCCESS;
     } else {
-        return 0;
+        return FAILURE;
     }
 }
 
