@@ -39,9 +39,27 @@ extern zend_module_entry linger_hashtable_module_entry;
 #endif
 
 #define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
-
-
 #define linger_efree(ptr) if(ptr) efree(ptr)
+
+#if PHP_MAJOR_VERSION < 7
+#	define LINGER_MAKE_STD_ZVAL(p)		MAKE_STD_ZVAL(p)
+#	define linger_zval_ptr_dtor			zval_ptr_dtor
+#	define linger_zval_add_ref			zval_add_ref
+#	define LINGER_ZVAL_STRINGL			ZVAL_STRINGL
+#	define LINGER_ZVAL_STRING			ZVAL_STRING
+#	define LINGER_RETURN_STRINGL		RETURN_STRINGL
+#	define LINGER_RETURN_STRING			RETURN_STRING
+#	define LINGER_RETVAL_STRINGL		RETVAL_STRINGL
+#else
+#	define LINGER_MAKE_STD_ZVAL(p)		zval _stack_zval_##p; p = &(_stack_zval_##p)
+#	define linger_zval_ptr_dtor(p)		zval_ptr_dtor(*p)
+#	define linger_zval_add_ref(p)		Z_TRY_ADDREF_P(*p)
+#	define LINGER_ZVAL_STRINGL(z, s, 1, dup)	ZVAL_STRINGL(z, s, 1)
+#	define LINGER_ZVAL_STRING(z, s, dup)		ZVAL_STRING(z, s)
+#	define LINGER_RETURN_STRINGL(s, 1, dup)		RETURN_STRINGL(z, 1)
+#	define LINGER_RETURN_STRING(s, dup)		RETURN_STRING(s)
+#	define LINGER_RETVAL_STRINGL(s, 1, dup)		RETVAL_STRINGL(s, 1)
+#endif
 
 /*
   	Declare any global variables you may need between the BEGIN

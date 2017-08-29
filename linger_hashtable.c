@@ -117,7 +117,7 @@ static bucket *ht_newpair(char *key, zval *value)
         return NULL;
     }
 
-    MAKE_STD_ZVAL(newpair->value);
+    LINGER_MAKE_STD_ZVAL(newpair->value);
     ZVAL_ZVAL(newpair->value, value, 1, 0);
     newpair->next = NULL;
     newpair->last = NULL;
@@ -237,7 +237,7 @@ static int ht_del(hashtable_t *hashtable, char *key)
             pre->next = pair->next;
         }
         linger_efree(pair->key);
-        zval_ptr_dtor(&pair->value);
+        linger_zval_ptr_dtor(&pair->value);
         linger_efree(pair);
         hashtable->count--;
         return 0;
@@ -253,7 +253,7 @@ static void ht_destroy(hashtable_t *hashtable)
             while (curr != NULL) {
                 next = curr->next;
                 linger_efree(curr->key);
-                zval_ptr_dtor(&curr->value);
+                linger_zval_ptr_dtor(&curr->value);
                 linger_efree(curr);
                 hashtable->count--;
                 curr = next;
@@ -328,7 +328,7 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
             zval *value = ht_get_zval(intern->hashtable, offset);
             int retval;
             retval = zend_is_true(value);
-            zval_ptr_dtor(&value);
+            linger_zval_ptr_dtor(&value);
             return retval;
         }
         return SUCCESS;
@@ -442,12 +442,12 @@ PHP_METHOD(linger_hashtable, foreach)
     } else {
         zval **arg[2];
         zval *param1, *param2, *retval;
-        MAKE_STD_ZVAL(param1);
-        MAKE_STD_ZVAL(param2);
+        LINGER_MAKE_STD_ZVAL(param1);
+        LINGER_MAKE_STD_ZVAL(param2);
         bucket *curr;
         curr = hashtable->head;
         while (curr != NULL) {
-            ZVAL_STRING(param1, curr->key, 1);
+            LINGER_ZVAL_STRING(param1, curr->key, 1);
             ZVAL_ZVAL(param2, curr->value, 1, 0);
             arg[0] = &param1;
             arg[1] = &param2;
@@ -456,8 +456,8 @@ PHP_METHOD(linger_hashtable, foreach)
             }
             curr = curr->listNext;
         }
-        zval_ptr_dtor(&param1);
-        zval_ptr_dtor(&param2);
+        linger_zval_ptr_dtor(&param1);
+        linger_zval_ptr_dtor(&param2);
         RETURN_TRUE;
     }
 }
@@ -488,9 +488,9 @@ static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_D
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
-        zval_ptr_dtor(&iterator->current);
+        linger_zval_ptr_dtor(&iterator->current);
     }
-    zval_ptr_dtor((zval **)&intern->data);
+    linger_zval_ptr_dtor((zval **)&intern->data);
     linger_efree(iterator);
 }
 
@@ -513,7 +513,7 @@ static void linger_hashtable_iterator_get_current_data(zend_object_iterator *int
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
-        zval_ptr_dtor(&iterator->current);
+        linger_zval_ptr_dtor(&iterator->current);
     }
     iterator->current = ht_get_zval(iterator->hashtable, iterator->offset);
     *data = &iterator->current;
@@ -522,7 +522,7 @@ static void linger_hashtable_iterator_get_current_data(zend_object_iterator *int
 static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key TSRMLS_DC)
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
-    ZVAL_STRING(key, iterator->offset, 0);
+    LINGER_ZVAL_STRING(key, iterator->offset, 0);
 }
 
 static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern TSRMLS_DC)
@@ -569,7 +569,11 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
     }
     iterator = emalloc(sizeof(hashtable_iterator));
     iterator->intern.funcs = &linger_hashtable_iterator_funcs;
+#if PHP_MAJOR_VERSION < 7
     iterator->intern.data = object;
+#else
+    iterator->intern.data = *object;
+#endif
     Z_ADDREF_P(object);
 
     hashtable_object *obj = zend_object_store_get_object(object TSRMLS_CC);
