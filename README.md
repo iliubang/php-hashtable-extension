@@ -56,10 +56,12 @@ for ($i = 0; $i < $n; $i++) {
     }
 }
 
-var_dump($ht->getCount());
+var_dump($ht->count());
 
 $ht['name'] = 'liubang';
 $ht['email'] = 'it.liubang@gmail.com';
+
+echo count($ht), "\n";
 
 $ht->foreach(function($key, $val) {
     echo "key:" . $key . " === val:".$val."\n";
