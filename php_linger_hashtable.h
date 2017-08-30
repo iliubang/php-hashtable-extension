@@ -45,7 +45,7 @@ extern zend_module_entry linger_hashtable_module_entry;
 #	define LINGER_MAKE_STD_ZVAL(p)		MAKE_STD_ZVAL(p)
 #	define LINGER_ALLOC_INIT_ZVAL		ALLOC_INIT_ZVAL
 #	define linger_zval_ptr_dtor			zval_ptr_dtor
-#	define linger_zval_add_ref_p		ZVAL_ADDREF_P
+#	define linger_zval_add_ref_p		Z_ADDREF_P
 #	define LINGER_ZVAL_STRINGL			ZVAL_STRINGL
 #	define LINGER_ZVAL_STRING			ZVAL_STRING
 #	define LINGER_RETURN_STRINGL		RETURN_STRINGL

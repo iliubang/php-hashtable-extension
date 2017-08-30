@@ -21,6 +21,6 @@ $ht->foreach(function($key, $val) {
 });
 
 echo "===============\n";
-//foreach ($ht as $key => $val) {
-//    echo $key . "::" . $val . "\n";
-//}
+foreach ($ht as $key => $val) {
+    echo $key . "::" . $val . "\n";
+}
