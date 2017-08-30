@@ -50,6 +50,7 @@ typedef struct _hashtable_s {
 } hashtable_t;
 
 typedef struct _hashtable_object hashtable_object;
+typedef struct _hashtable_iterator hashtable_iterator;
 
 #if PHP_MAJOR_VERSION < 7
 /* Define hashtable object struct */
@@ -64,12 +65,12 @@ struct _hashtable_object {
 };
 #endif
 
-typedef struct _hashtable_iterator {
+struct _hashtable_iterator {
     zend_object_iterator intern;
     hashtable_t *hashtable;
     char *offset;
     zval *current;
-} hashtable_iterator;
+};
 
 /* Create hashtable */
 static hashtable_t *ht_create(long size)
@@ -126,9 +127,10 @@ static bucket *ht_newpair(char *key, zval *value)
         return NULL;
     }
     zval *newpair_value;
-    LINGER_MAKE_STD_ZVAL(newpair_value);
+    LINGER_ALLOC_INIT_ZVAL(newpair_value);
     ZVAL_ZVAL(newpair_value, value, 1, 0);
     newpair->value = newpair_value;
+    linger_zval_add_ref_p(newpair_value);
     newpair->next = NULL;
     newpair->last = NULL;
     newpair->listNext = NULL;
@@ -345,8 +347,11 @@ static char *get_string_from_zval(zval *val)
 
 static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int type TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION < 7
     hashtable_object *intern = linger_get_object(object);
-//    hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+#else
+    hashtable_object *intern = linger_get_object(Z_OBJ_P(object));
+#endif
     if (!zv_offset) {
         zend_throw_exception(NULL, "Cannot append to a hashtable", 0 TSRMLS_CC);
         return NULL;
@@ -358,16 +363,22 @@ static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int 
 
 static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION < 7
     hashtable_object *intern = linger_get_object(object);
-    //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+#else
+    hashtable_object *intern = linger_get_object(Z_OBJ_P(object));
+#endif
     char *offset = get_string_from_zval(zv_offset);
     return ht_set(intern->hashtable, offset, value);
 }
 
 static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int check_empty TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION < 7
     hashtable_object *intern = linger_get_object(object);
-    //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+#else
+    hashtable_object *intern = linger_get_object(Z_OBJ_P(object));
+#endif
     char *offset = get_string_from_zval(zv_offset);
     if (ht_isset(intern->hashtable, offset) == 0) {
         if (check_empty) {
@@ -385,46 +396,51 @@ static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int che
 
 static void linger_hashtable_unset_dimension(zval *object, zval *zv_offset TSRMLS_DC)
 {
-    hashtable_object *intern = zend_object_get_store_object(object TSRMLS_CC);
+#if PHP_MAJOR_VERSION < 7
+    hashtable_object *intern = linger_get_object(object);
+#else
+    hashtable_object *intern = linger_get_object(Z_OBJ_P(object));
+#endif
     char *offset = get_string_from_zval(zv_offset);
     ht_del(intern->hashtable, offset);
 }
 
 static int linger_hashtable_count_elements(zval *object, long *count TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION < 7
     hashtable_object *intern = linger_get_object(object);
-    //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
+#else
+    hashtable_object *intern = linger_get_object(Z_OBJ_P(object));
+#endif
     *count = intern->hashtable->count;
     return SUCCESS;
 }
 
 PHP_METHOD(linger_hashtable, set)
 {
-    char *key;
-    long key_len;
+    zval *key;
     zval *value, *hrc;
     hashtable_object *ht_obj;
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &value) == FAILURE) {
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &key, &value) == FAILURE) {
         RETURN_FALSE;
     }
-    ht_obj = linger_get_object(getThis());
-//    ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
-    ht_set(ht_obj->hashtable, key, value);
+    ht_obj = linger_get_object(linger_get_this());
+    char *key_s = get_string_from_zval(key);
+    ht_set(ht_obj->hashtable, key_s, value);
     RETURN_TRUE;
 }
 
 PHP_METHOD(linger_hashtable, get)
 {
-    char *key;
-    long key_len;
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+    zval *key;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &key) == FAILURE) {
         RETURN_FALSE;
     }
     hashtable_object *ht_obj;
-    ht_obj = linger_get_object(getThis());
-    //ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_obj = linger_get_object(linger_get_this());
     zval *retval;
-    retval = ht_get_zval(ht_obj->hashtable, key);
+    char *key_s = get_string_from_zval(key);
+    retval = ht_get_zval(ht_obj->hashtable, key_s);
     if (retval == NULL) {
         RETURN_NULL();
     } else {
@@ -440,8 +456,7 @@ PHP_METHOD(linger_hashtable, isset)
         RETURN_FALSE;
     }
     hashtable_object *ht_obj;
-    ht_obj = linger_get_object(getThis());
-    //ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_obj = linger_get_object(linger_get_this());
     if (ht_isset(ht_obj->hashtable, key) == 0) {
         RETURN_TRUE;
     } else {
@@ -457,8 +472,7 @@ PHP_METHOD(linger_hashtable, del)
         RETURN_FALSE;
     }
     hashtable_object *ht_obj;
-    ht_obj = linger_get_object(getThis());
-    //ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_obj = linger_get_object(linger_get_this());
     if (ht_del(ht_obj->hashtable, key) == 0) {
         RETURN_TRUE;
     } else {
@@ -469,8 +483,7 @@ PHP_METHOD(linger_hashtable, del)
 PHP_METHOD(linger_hashtable, count)
 {
     hashtable_object *ht_obj;
-    ht_obj = linger_get_object(getThis());
-    //ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_obj = linger_get_object(linger_get_this());
     RETURN_LONG(ht_obj->hashtable->count);
 }
 
@@ -487,8 +500,7 @@ PHP_METHOD(linger_hashtable, foreach)
     }
     hashtable_object *ht_obj;
     hashtable_t *hashtable;
-    ht_obj = linger_get_object(getThis());
-    //ht_obj = zend_object_store_get_object(getThis() TSRMLS_CC);
+    ht_obj = linger_get_object(linger_get_this());
     hashtable = ht_obj->hashtable;
     if (hashtable->count <= 0) {
         RETURN_TRUE;
@@ -537,7 +549,11 @@ static zend_function_entry hashtable_method[] = {
     PHP_FE_END
 };
 
+#if PHP_MAJOR_VERSION < 7
 static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_DC)
+#else
+static void linger_hashtable_iterator_dtor(zend_object_iterator *intern)
+#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
@@ -547,8 +563,13 @@ static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_D
     linger_efree(iterator);
 }
 
+#if PHP_MAJOR_VERSION < 7
 static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_DC)
+#else
+static int linger_hashtable_iterator_valid(zend_object_iterator *intern)
+#endif
 {
+    php_printf("valid\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->offset == NULL) {
         return FAILURE;
@@ -559,27 +580,45 @@ static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_D
     } else {
         return SUCCESS;
     }
-    return SUCCESS;
 }
 
+#if PHP_MAJOR_VERION < 7
 static void linger_hashtable_iterator_get_current_data(zend_object_iterator *intern, zval ***data TSRMLS_DC)
+#else
+static zval *linger_hashtable_iterator_get_current_data(zend_object_iterator *intern)
+#endif
 {
+    php_printf("current data\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
         linger_zval_ptr_dtor(&iterator->current);
     }
     iterator->current = ht_get_zval(iterator->hashtable, iterator->offset);
+#if PHP_MAJOR_VERION < 7
     *data = &iterator->current;
+#else
+    return iterator->current;
+#endif
 }
 
+#if PHP_MAJOR_VERION < 7
 static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key TSRMLS_DC)
+#else
+static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key)
+#endif
 {
+    php_printf("current key\n");
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     LINGER_ZVAL_STRING(key, iterator->offset, 0);
 }
 
+#if PHP_MAJOR_VERION < 7
 static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern TSRMLS_DC)
+#else
+static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern)
+#endif
 {
+    php_printf("move forward\n");
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
     bucket *pair;
@@ -593,8 +632,13 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
     }
 }
 
+#if PHP_MAJOR_VERSION < 7
 static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS_DC)
+#else
+static void linger_hashtable_iterator_rewind(zend_object_iterator *intern)
+#endif
 {
+    php_printf("rewind\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->hashtable->head) {
         iterator->offset = iterator->hashtable->head->key;
@@ -610,7 +654,8 @@ static zend_object_iterator_funcs linger_hashtable_iterator_funcs = {
     linger_hashtable_iterator_get_current_data,
     linger_hashtable_iterator_get_current_key,
     linger_hashtable_iterator_move_forward,
-    linger_hashtable_iterator_rewind
+    linger_hashtable_iterator_rewind,
+    NULL
 };
 
 zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *object, int by_ref TSRMLS_DC)
@@ -623,14 +668,13 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
     iterator = emalloc(sizeof(hashtable_iterator));
     iterator->intern.funcs = &linger_hashtable_iterator_funcs;
 #if PHP_MAJOR_VERSION < 7
+    hashtable_object *obj = linger_get_object(object);
     iterator->intern.data = object;
 #else
+    hashtable_object *obj = linger_get_object(Z_OBJ_P(object));
     iterator->intern.data = *object;
 #endif
-    Z_ADDREF_P(object);
-
-    hashtable_object *obj = linger_get_object(object TSRMLS_CC);
-//    hashtable_object *obj = zend_object_store_get_object(object TSRMLS_CC);
+    linger_zval_add_ref_p(object);
     iterator->hashtable = obj->hashtable;
     if (obj->hashtable->head != NULL) {
         iterator->offset = obj->hashtable->head->key;
@@ -654,6 +698,7 @@ PHP_MINIT_FUNCTION(linger_hashtable)
 #if PHP_MAJOR_VERSION >= 7
     hashtable_object_handlers.free_obj = hashtable_free_object_handler;
     hashtable_object_handlers.dtor_obj = hashtable_destroy_object_handler;
+    hashtable_object_handlers.offset = XtOffsetOf(hashtable_object, std);
 #endif
     hashtable_object_handlers.read_dimension = linger_hashtable_read_dimension;
     hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
