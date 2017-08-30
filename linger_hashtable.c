@@ -82,7 +82,7 @@ static hashtable_t *ht_create(long size)
     if ((hashtable = emalloc(sizeof(hashtable_t))) == NULL) {
         return NULL;
     }
-    if ((hashtable->table = emalloc(sizeof(bucket *) * size)) == NULL) {
+    if ((hashtable->table = ecalloc(size, sizeof(bucket *))) == NULL) {
         linger_efree(hashtable);
         return NULL;
     }
@@ -303,7 +303,7 @@ zend_object_value hashtable_create_object_handler(zend_class_entry *class_type T
 }
 #else
 
-#define linger_get_object(object)  (hashtable_object *)((char *)object - XtoffsetOf(hashtable_object, std))
+#define linger_get_object(object)  (hashtable_object *)((char *)object - XtOffsetOf(hashtable_object, std))
 
 zend_object *hashtable_create_object_handler(zend_class_entry *class_type TSRMLS_DC)
 {
@@ -345,7 +345,7 @@ static char *get_string_from_zval(zval *val)
 
 static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int type TSRMLS_DC)
 {
-    hashtable_object *intern = lingerget_object(object);
+    hashtable_object *intern = linger_get_object(object);
 //    hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
     if (!zv_offset) {
         zend_throw_exception(NULL, "Cannot append to a hashtable", 0 TSRMLS_CC);
@@ -358,7 +358,7 @@ static zval *linger_hashtable_read_dimension(zval *object, zval *zv_offset, int 
 
 static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval *value TSRMLS_DC)
 {
-    hashtable_object *intern = lingerget_object(object);
+    hashtable_object *intern = linger_get_object(object);
     //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
     char *offset = get_string_from_zval(zv_offset);
     return ht_set(intern->hashtable, offset, value);
@@ -366,7 +366,7 @@ static void linger_hashtable_write_dimension(zval *object, zval *zv_offset, zval
 
 static int linger_hashtable_has_dimension(zval *object, zval *zv_offset, int check_empty TSRMLS_DC)
 {
-    hashtable_object *intern = lingerget_object(object);
+    hashtable_object *intern = linger_get_object(object);
     //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
     char *offset = get_string_from_zval(zv_offset);
     if (ht_isset(intern->hashtable, offset) == 0) {
@@ -392,7 +392,7 @@ static void linger_hashtable_unset_dimension(zval *object, zval *zv_offset TSRML
 
 static int linger_hashtable_count_elements(zval *object, long *count TSRMLS_DC)
 {
-    hashtable_object *intern = lingerget_object(object);
+    hashtable_object *intern = linger_get_object(object);
     //hashtable_object *intern = zend_object_store_get_object(object TSRMLS_CC);
     *count = intern->hashtable->count;
     return SUCCESS;
@@ -653,7 +653,7 @@ PHP_MINIT_FUNCTION(linger_hashtable)
     memcpy(&hashtable_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 #if PHP_MAJOR_VERSION >= 7
     hashtable_object_handlers.free_obj = hashtable_free_object_handler;
-    hashtable_object_handlers.destroy_obj = hashtable_destroy_object_handler;
+    hashtable_object_handlers.dtor_obj = hashtable_destroy_object_handler;
 #endif
     hashtable_object_handlers.read_dimension = linger_hashtable_read_dimension;
     hashtable_object_handlers.write_dimension = linger_hashtable_write_dimension;
