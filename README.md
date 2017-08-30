@@ -2,7 +2,7 @@
 
 ## Require
 
-- php > 5.3
+- php >= 5.3
 
 ```
 git clone https://github.com/iliubang/php-hashtable-extension.git
