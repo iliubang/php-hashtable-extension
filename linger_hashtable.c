@@ -516,7 +516,6 @@ PHP_METHOD(linger_hashtable, foreach)
             ZVAL_ZVAL(param2, curr->value, 1, 0);
             arg[0] = &param1;
             arg[1] = &param2;
-            //static sw_inline int sw_call_user_function_fast(zval *function_name, zend_fcall_info_cache *fci_cache, zval **retval_ptr_ptr, uint32_t param_count, zval ***params)
             if (linger_call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL) != SUCCESS) {
                 php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
             }
@@ -530,12 +529,10 @@ PHP_METHOD(linger_hashtable, foreach)
 
 PHP_METHOD(linger_hashtable, __construct)
 {
-
 }
 
 PHP_METHOD(linger_hashtable, __destruct)
 {
-
 }
 
 static zend_function_entry hashtable_method[] = {
@@ -669,11 +666,9 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
 #else
     zend_iterator_init(&iterator->intern);
     hashtable_object *obj = linger_get_object(Z_OBJ_P(object));
-    //iterator->intern.data = *object;
     ZVAL_COPY(&iterator->intern.data, object);
 #endif
     iterator->intern.funcs = &linger_hashtable_iterator_funcs;
-    //linger_zval_add_ref_p(object);
     iterator->hashtable = obj->hashtable;
     if (obj->hashtable->head != NULL) {
         iterator->offset = obj->hashtable->head->key;
