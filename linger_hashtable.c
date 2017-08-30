@@ -662,17 +662,17 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
         return NULL;
     }
     iterator = ecalloc(1, sizeof(hashtable_iterator));
-    zend_iterator_init(&iterator->intern);
-    iterator->intern.funcs = &linger_hashtable_iterator_funcs;
 #if PHP_MAJOR_VERSION < 7
     hashtable_object *obj = linger_get_object(object);
-    //iterator->intern.data = object;
-    ZVAL_COPY(iterator->intern.data, object);
+    iterator->intern.data = object;
+    linger_zval_add_ref_p(object);
 #else
+    zend_iterator_init(&iterator->intern);
     hashtable_object *obj = linger_get_object(Z_OBJ_P(object));
     //iterator->intern.data = *object;
     ZVAL_COPY(&iterator->intern.data, object);
 #endif
+    iterator->intern.funcs = &linger_hashtable_iterator_funcs;
     //linger_zval_add_ref_p(object);
     iterator->hashtable = obj->hashtable;
     if (obj->hashtable->head != NULL) {
