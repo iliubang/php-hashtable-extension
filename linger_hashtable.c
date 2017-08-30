@@ -501,7 +501,6 @@ PHP_METHOD(linger_hashtable, foreach)
     hashtable_object *ht_obj;
     hashtable_t *hashtable;
     ht_obj = linger_get_object(linger_get_this());
-    php_printf("foreach\n");
     hashtable = ht_obj->hashtable;
     if (hashtable->count <= 0) {
         RETURN_TRUE;
@@ -519,7 +518,6 @@ PHP_METHOD(linger_hashtable, foreach)
             arg[1] = &param2;
             //static sw_inline int sw_call_user_function_fast(zval *function_name, zend_fcall_info_cache *fci_cache, zval **retval_ptr_ptr, uint32_t param_count, zval ***params)
             if (linger_call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL) != SUCCESS) {
-                php_printf("call error\n");
                 php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
             }
             curr = curr->listNext;
@@ -572,7 +570,6 @@ static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_D
 static int linger_hashtable_iterator_valid(zend_object_iterator *intern)
 #endif
 {
-    php_printf("valid\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->offset == NULL) {
         return FAILURE;
@@ -591,13 +588,12 @@ static void linger_hashtable_iterator_get_current_data(zend_object_iterator *int
 static zval *linger_hashtable_iterator_get_current_data(zend_object_iterator *intern)
 #endif
 {
-    php_printf("current data\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
         linger_zval_ptr_dtor(&iterator->current);
     }
     iterator->current = ht_get_zval(iterator->hashtable, iterator->offset);
-#if PHP_MAJOR_VERION < 7
+#if PHP_MAJOR_VERSION < 7
     *data = &iterator->current;
 #else
     return iterator->current;
@@ -610,7 +606,6 @@ static void linger_hashtable_iterator_get_current_key(zend_object_iterator *inte
 static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key)
 #endif
 {
-    php_printf("current key\n");
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     LINGER_ZVAL_STRING(key, iterator->offset, 0);
 }
@@ -621,7 +616,6 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern 
 static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern)
 #endif
 {
-    php_printf("move forward\n");
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
     bucket *pair;
@@ -641,7 +635,6 @@ static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS
 static void linger_hashtable_iterator_rewind(zend_object_iterator *intern)
 #endif
 {
-    php_printf("rewind\n");
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->hashtable->head) {
         iterator->offset = iterator->hashtable->head->key;
@@ -668,16 +661,19 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
         zend_throw_exception(NULL, "Cannot iterate by refererce", 0 TSRMLS_CC);
         return NULL;
     }
-    iterator = emalloc(sizeof(hashtable_iterator));
+    iterator = ecalloc(1, sizeof(hashtable_iterator));
+    zend_iterator_init(&iterator->intern);
     iterator->intern.funcs = &linger_hashtable_iterator_funcs;
 #if PHP_MAJOR_VERSION < 7
     hashtable_object *obj = linger_get_object(object);
-    iterator->intern.data = object;
+    //iterator->intern.data = object;
+    ZVAL_COPY(iterator->intern.data, object);
 #else
     hashtable_object *obj = linger_get_object(Z_OBJ_P(object));
-    iterator->intern.data = *object;
+    //iterator->intern.data = *object;
+    ZVAL_COPY(&iterator->intern.data, object);
 #endif
-    linger_zval_add_ref_p(object);
+    //linger_zval_add_ref_p(object);
     iterator->hashtable = obj->hashtable;
     if (obj->hashtable->head != NULL) {
         iterator->offset = obj->hashtable->head->key;
@@ -685,7 +681,11 @@ zend_object_iterator *linger_hashtable_get_iterator(zend_class_entry *ce, zval *
         iterator->offset = NULL;
     }
     iterator->current = NULL;
+#if PHP_MAJOR_VERSION < 7
     return (zend_object_iterator *)iterator;
+#else
+    return &iterator->intern;
+#endif
 }
 
 PHP_MINIT_FUNCTION(linger_hashtable)

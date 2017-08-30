@@ -20,7 +20,6 @@ $ht->foreach(function($key, $val) {
     echo $key . "::" . $val . "\n";
 });
 
-echo "===============\n";
 foreach ($ht as $key => $val) {
     echo $key . "::" . $val . "\n";
 }
