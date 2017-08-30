@@ -501,6 +501,7 @@ PHP_METHOD(linger_hashtable, foreach)
     hashtable_object *ht_obj;
     hashtable_t *hashtable;
     ht_obj = linger_get_object(linger_get_this());
+    php_printf("foreach\n");
     hashtable = ht_obj->hashtable;
     if (hashtable->count <= 0) {
         RETURN_TRUE;
@@ -516,7 +517,9 @@ PHP_METHOD(linger_hashtable, foreach)
             ZVAL_ZVAL(param2, curr->value, 1, 0);
             arg[0] = &param1;
             arg[1] = &param2;
-            if (call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL TSRMLS_CC) != SUCCESS) {
+            //static sw_inline int sw_call_user_function_fast(zval *function_name, zend_fcall_info_cache *fci_cache, zval **retval_ptr_ptr, uint32_t param_count, zval ***params)
+            if (linger_call_user_function_ex(EG(function_table), NULL, func, &retval, 2, arg, 0, NULL) != SUCCESS) {
+                php_printf("call error\n");
                 php_error_docref(NULL TSRMLS_CC, E_ERROR, "call function error!");
             }
             curr = curr->listNext;

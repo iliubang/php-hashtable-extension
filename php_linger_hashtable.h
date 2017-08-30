@@ -52,6 +52,7 @@ extern zend_module_entry linger_hashtable_module_entry;
 #	define LINGER_RETURN_STRING			RETURN_STRING
 #	define LINGER_RETVAL_STRINGL		RETVAL_STRINGL
 #	define linger_get_this				getThis
+#	define linger_call_user_function_ex call_user_function_ex
 #else
 #	define LINGER_MAKE_STD_ZVAL(p)		zval _stack_zval_##p; p = &(_stack_zval_##p)
 #	define LINGER_ALLOC_INIT_ZVAL(p)	do{p = (zval *)emalloc(sizeof(zval)); bzero(p, sizeof(zval));}while(0)
@@ -63,6 +64,21 @@ extern zend_module_entry linger_hashtable_module_entry;
 #	define LINGER_RETURN_STRING(s, dup)		RETURN_STRING(s)
 #	define LINGER_RETVAL_STRINGL(s, l, dup)		RETVAL_STRINGL(s, l)
 #	define linger_get_this()			Z_OBJ_P(getThis())
+#	define LINGER_PHP_MAX_PARAMS_NUM 	20
+
+static inline int linger_call_user_function_ex(HashTable *function_table, zval** object_pp, zval *function_name, zval **retval_ptr_ptr, uint32_t param_count, zval ***params, int no_separation, HashTable* symbol_table)
+{
+    zval real_params[LINGER_PHP_MAX_PARAMS_NUM];
+    int i = 0;
+    for (; i < param_count; i++) {
+        real_params[i] = **params[i];
+    }
+    zval phpng_retval;
+    *retval_ptr_ptr = &phpng_retval;
+    zval *object_p = (object_pp == NULL) ? NULL : *object_pp;
+    return call_user_function_ex(function_table, object_p, function_name, &phpng_retval, param_count, real_params, no_separation, NULL);
+}
+
 #endif
 
 /*

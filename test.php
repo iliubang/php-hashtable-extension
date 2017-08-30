@@ -14,9 +14,13 @@ for ($i = 0; $i < 100; $i++) {
     echo $ht[$i], "\n";
 }
 
-echo count($ht);
+echo count($ht), "\n";
+
+$ht->foreach(function($key, $val) {
+    echo $key . "::" . $val . "\n";
+});
 
 echo "===============\n";
-foreach ($ht as $key => $val) {
-    echo $key . "::" . $val . "\n";
-}
+//foreach ($ht as $key => $val) {
+//    echo $key . "::" . $val . "\n";
+//}
