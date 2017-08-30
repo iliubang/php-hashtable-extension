@@ -272,7 +272,7 @@ static void ht_destroy(hashtable_t *hashtable)
             }
         }
     }
-    //linger_efree(hashtable);
+    linger_efree(hashtable);
 }
 
 static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
