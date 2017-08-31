@@ -89,8 +89,8 @@ HashTable:0.0025930404663086
 
 ```
 liubang@venux:~$ php test.php 
-HashTable:0.0061972141265869
-    Array:0.0050110816955566
+HashTable:0.0054419040679932
+    Array:0.0054309368133545
 ```
 
 ## methods
