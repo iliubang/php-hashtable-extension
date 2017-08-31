@@ -271,7 +271,6 @@ static void ht_destroy(hashtable_t *hashtable)
             }
         }
     }
-    //linger_efree(hashtable);
 }
 
 static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
@@ -328,6 +327,7 @@ static void hashtable_destroy_object_handler(zend_object *object)
 static void hashtable_free_object_handler(zend_object *object)
 {
     hashtable_object *ht_object = linger_get_object(object);
+    ht_destroy(ht_object->hashtable);
     linger_efree(ht_object->hashtable);
     linger_efree(ht_object);
     zend_object_std_dtor(object);
