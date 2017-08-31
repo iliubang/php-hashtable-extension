@@ -1,7 +1,8 @@
 # a simple hashtable implementation
 
 ## Require
-- php <= 5.6
+
+- php >= 5.3
 
 ```
 git clone https://github.com/iliubang/php-hashtable-extension.git
@@ -76,10 +77,20 @@ echo "    Array:" . (microtime(true) - $start), PHP_EOL;
 ```
 result
 
+**php-7.1**
+
 ```
-liubang@venux:~/workspace/c/php-hashtable-extension/tests$ php test2.php 
-HashTable:0.0060431957244873
-    Array:0.0054750442504883
+liubang@venux:~$ php test.php 
+HashTable:0.0025930404663086
+    Array:0.0021340847015381
+```
+
+**php-5.6**
+
+```
+liubang@venux:~$ php test.php 
+HashTable:0.0054419040679932
+    Array:0.0054309368133545
 ```
 
 ## methods

@@ -39,9 +39,47 @@ extern zend_module_entry linger_hashtable_module_entry;
 #endif
 
 #define LINGER_HASHTABLE_PROPERTIES_NAME "_hashtable"
-
-
 #define linger_efree(ptr) if(ptr) efree(ptr)
+
+#if PHP_MAJOR_VERSION < 7
+#	define LINGER_MAKE_STD_ZVAL(p)		MAKE_STD_ZVAL(p)
+#	define LINGER_ALLOC_INIT_ZVAL		ALLOC_INIT_ZVAL
+#	define linger_zval_ptr_dtor			zval_ptr_dtor
+#	define linger_zval_add_ref_p		Z_ADDREF_P
+#	define LINGER_ZVAL_STRINGL			ZVAL_STRINGL
+#	define LINGER_ZVAL_STRING			ZVAL_STRING
+#	define LINGER_RETURN_STRINGL		RETURN_STRINGL
+#	define LINGER_RETURN_STRING			RETURN_STRING
+#	define LINGER_RETVAL_STRINGL		RETVAL_STRINGL
+#	define linger_get_this				getThis
+#	define linger_call_user_function_ex call_user_function_ex
+#else
+#	define LINGER_MAKE_STD_ZVAL(p)		zval _stack_zval_##p; p = &(_stack_zval_##p)
+#	define LINGER_ALLOC_INIT_ZVAL(p)	do{p = (zval *)emalloc(sizeof(zval)); bzero(p, sizeof(zval));}while(0)
+#	define linger_zval_ptr_dtor(p)		zval_ptr_dtor(*p)
+#	define linger_zval_add_ref_p(p)		Z_TRY_ADDREF_P(p)
+#	define LINGER_ZVAL_STRINGL(z, s, l, dup)	ZVAL_STRINGL(z, s, l)
+#	define LINGER_ZVAL_STRING(z, s, dup)		ZVAL_STRING(z, s)
+#	define LINGER_RETURN_STRINGL(s, l, dup)		RETURN_STRINGL(z, l)
+#	define LINGER_RETURN_STRING(s, dup)		RETURN_STRING(s)
+#	define LINGER_RETVAL_STRINGL(s, l, dup)		RETVAL_STRINGL(s, l)
+#	define linger_get_this()			Z_OBJ_P(getThis())
+#	define LINGER_PHP_MAX_PARAMS_NUM 	20
+
+static inline int linger_call_user_function_ex(HashTable *function_table, zval** object_pp, zval *function_name, zval **retval_ptr_ptr, uint32_t param_count, zval ***params, int no_separation, HashTable* symbol_table)
+{
+    zval real_params[LINGER_PHP_MAX_PARAMS_NUM];
+    int i = 0;
+    for (; i < param_count; i++) {
+        real_params[i] = **params[i];
+    }
+    zval phpng_retval;
+    *retval_ptr_ptr = &phpng_retval;
+    zval *object_p = (object_pp == NULL) ? NULL : *object_pp;
+    return call_user_function_ex(function_table, object_p, function_name, &phpng_retval, param_count, real_params, no_separation, NULL);
+}
+
+#endif
 
 /*
   	Declare any global variables you may need between the BEGIN
