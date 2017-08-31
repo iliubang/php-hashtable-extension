@@ -88,6 +88,7 @@ HashTable:0.0025930404663086
 **php-5.6**
 
 ```
+liubang@venux:~$ php test.php 
 HashTable:0.0061972141265869
     Array:0.0050110816955566
 ```
