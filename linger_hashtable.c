@@ -121,16 +121,15 @@ static bucket *ht_newpair(char *key, zval *value)
     if ((newpair = emalloc(sizeof(bucket))) == NULL) {
         return NULL;
     }
-
     if ((newpair->key = estrdup(key)) == NULL) {
         linger_efree(newpair);
         return NULL;
     }
     zval *newpair_value;
-    LINGER_ALLOC_INIT_ZVAL(newpair_value);
-    ZVAL_ZVAL(newpair_value, value, 1, 0);
-    newpair->value = newpair_value;
-    linger_zval_add_ref_p(newpair_value);
+    //LINGER_ALLOC_INIT_ZVAL(newpair_value);
+    //ZVAL_ZVAL(newpair_value, value, 1, 0);
+    newpair->value = value;
+    linger_zval_add_ref_p(value);
     newpair->next = NULL;
     newpair->last = NULL;
     newpair->listNext = NULL;
@@ -272,14 +271,15 @@ static void ht_destroy(hashtable_t *hashtable)
             }
         }
     }
-    linger_efree(hashtable);
+    //linger_efree(hashtable);
 }
 
 static void hashtable_free_object_storage_handler(hashtable_object *ht_object TSRMLS_DC)
 {
     zend_object_std_dtor(&ht_object->std TSRMLS_CC);
     ht_destroy(ht_object->hashtable);
-    efree(ht_object);
+    linger_efree(ht_object->hashtable);
+    linger_efree(ht_object);
 }
 
 #if PHP_MAJOR_VERSION < 7
@@ -329,6 +329,7 @@ static void hashtable_free_object_handler(zend_object *object)
 {
     hashtable_object *ht_object = linger_get_object(object);
     linger_efree(ht_object->hashtable);
+    linger_efree(ht_object);
     zend_object_std_dtor(object);
 }
 #endif
