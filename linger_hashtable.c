@@ -548,11 +548,7 @@ static zend_function_entry hashtable_method[] = {
     PHP_FE_END
 };
 
-#if PHP_MAJOR_VERSION < 7
 static void linger_hashtable_iterator_dtor(zend_object_iterator *intern TSRMLS_DC)
-#else
-static void linger_hashtable_iterator_dtor(zend_object_iterator *intern)
-#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->current) {
@@ -562,11 +558,7 @@ static void linger_hashtable_iterator_dtor(zend_object_iterator *intern)
     linger_efree(iterator);
 }
 
-#if PHP_MAJOR_VERSION < 7
 static int linger_hashtable_iterator_valid(zend_object_iterator *intern TSRMLS_DC)
-#else
-static int linger_hashtable_iterator_valid(zend_object_iterator *intern)
-#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->offset == NULL) {
@@ -598,21 +590,13 @@ static zval *linger_hashtable_iterator_get_current_data(zend_object_iterator *in
 #endif
 }
 
-#if PHP_MAJOR_VERION < 7
 static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key TSRMLS_DC)
-#else
-static void linger_hashtable_iterator_get_current_key(zend_object_iterator *intern, zval *key)
-#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     LINGER_ZVAL_STRING(key, iterator->offset, 0);
 }
 
-#if PHP_MAJOR_VERION < 7
 static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern TSRMLS_DC)
-#else
-static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern)
-#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *)intern;
     int bin = 0;
@@ -627,11 +611,7 @@ static void linger_hashtable_iterator_move_forward(zend_object_iterator *intern)
     }
 }
 
-#if PHP_MAJOR_VERSION < 7
 static void linger_hashtable_iterator_rewind(zend_object_iterator *intern TSRMLS_DC)
-#else
-static void linger_hashtable_iterator_rewind(zend_object_iterator *intern)
-#endif
 {
     hashtable_iterator *iterator = (hashtable_iterator *) intern;
     if (iterator->hashtable->head) {
