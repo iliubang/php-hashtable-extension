@@ -1,5 +1,6 @@
 <?php
 
+
 $ht = new linger\Hashtable();
 var_dump($ht);
 
